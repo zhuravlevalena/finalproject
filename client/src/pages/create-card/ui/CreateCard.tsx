@@ -9,7 +9,7 @@ import { productProfileService } from '@/entities/productprofile/api/productprof
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, Sparkles } from 'lucide-react';
 
 export default function CreateCard(): React.JSX.Element {
   const [, setLocation] = useLocation();
@@ -21,6 +21,7 @@ export default function CreateCard(): React.JSX.Element {
   const [uploadedImageData, setUploadedImageData] = useState<{ id: number; url: string } | null>(null);
   const [productType, setProductType] = useState('');
   const [canvasData, setCanvasData] = useState<Record<string, unknown> | null>(null);
+  const [generatePrompt, setGeneratePrompt] = useState('');
 
   const { data: marketplaces } = useQuery({
     queryKey: ['marketplaces'],
@@ -37,6 +38,14 @@ export default function CreateCard(): React.JSX.Element {
     mutationFn: (file: File) => imageService.upload(file),
     onSuccess: (data) => {
       setUploadedImageData({ id: data.id, url: data.url });
+    },
+  });
+
+  const generateImageMutation = useMutation({
+    mutationFn: (prompt: string) => imageService.generate(prompt),
+    onSuccess: (data) => {
+      setUploadedImageData({ id: data.id, url: data.url });
+      setGeneratePrompt('');
     },
   });
 
@@ -87,7 +96,14 @@ export default function CreateCard(): React.JSX.Element {
             <h2 className="text-xl font-semibold mb-4">Редактор карточки</h2>
             <CardEditor
               onSave={handleSave}
-              initialImage={uploadedImageData ? { id: uploadedImageData.id, url: uploadedImageData.url, userId: 0, type: 'uploaded' as const, createdAt: '', updatedAt: '' } : undefined}
+              initialImage={uploadedImageData ? { 
+                id: uploadedImageData.id, 
+                url: uploadedImageData.url, 
+                userId: 0, 
+                type: 'uploaded' as const, 
+                createdAt: '', 
+                updatedAt: '' 
+              } : undefined}
             />
           </Card>
         </div>
@@ -172,6 +188,48 @@ export default function CreateCard(): React.JSX.Element {
                 {uploadedImageData && (
                   <p className="text-sm text-green-600 mt-2">Изображение загружено</p>
                 )}
+              </div>
+
+              <div className="border-t pt-4">
+                <label className="block text-sm font-medium mb-2">Сгенерировать изображение AI</label>
+                <div className="space-y-2">
+                  <textarea
+                    value={generatePrompt}
+                    onChange={(e) => setGeneratePrompt(e.target.value)}
+                    placeholder="Опишите изображение, которое хотите сгенерировать..."
+                    className="w-full p-2 border rounded min-h-[80px] resize-none"
+                    rows={3}
+                  />
+                  <Button
+                    onClick={() => {
+                      if (generatePrompt.trim()) {
+                        generateImageMutation.mutate(generatePrompt.trim());
+                      }
+                    }}
+                    disabled={!generatePrompt.trim() || generateImageMutation.isPending}
+                    className="w-full flex items-center justify-center gap-2"
+                  >
+                    {generateImageMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Генерация...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Сгенерировать
+                      </>
+                    )}
+                  </Button>
+                  {generateImageMutation.isError && (
+                    <p className="text-sm text-red-600">
+                      Ошибка: {generateImageMutation.error instanceof Error ? generateImageMutation.error.message : 'Не удалось сгенерировать изображение'}
+                    </p>
+                  )}
+                  {generateImageMutation.isSuccess && uploadedImageData && (
+                    <p className="text-sm text-green-600">Изображение успешно сгенерировано!</p>
+                  )}
+                </div>
               </div>
             </div>
           </Card>

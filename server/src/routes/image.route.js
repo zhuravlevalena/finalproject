@@ -43,6 +43,7 @@ const upload = multer({
 imageRouter.use(verifyAccessToken);
 
 imageRouter.post('/upload', upload.single('image'), ImageController.uploadImage);
+imageRouter.post('/generate', ImageController.generateImage);
 imageRouter.get('/', ImageController.getAllImages);
 imageRouter.get('/:id', ImageController.getImageById);
 imageRouter.delete('/:id', ImageController.deleteImage);
