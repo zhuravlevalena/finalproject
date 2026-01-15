@@ -7,6 +7,7 @@ import Dashboard from '@/pages/dashboard/ui/Dashboard';
 import CreateCard from '@/pages/create-card/ui/CreateCard';
 import Login from '@/pages/login/ui/LoginPage';
 import Register from '@/pages/register/ui/RegisterPage';
+import AuthCallback from '@/pages/auth-callback/ui/AuthCallback';
 import { useAppDispatch, useAppSelector } from '@/shared/lib/hooks';
 import { refreshThunk } from '@/entities/user/model/user.thunk';
 
@@ -63,6 +64,7 @@ export default function Router(): React.JSX.Element {
         <Route path="/register">
           {!isLogged ? <Register /> : null}
         </Route>
+        <Route path="/auth/callback" component={AuthCallback} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

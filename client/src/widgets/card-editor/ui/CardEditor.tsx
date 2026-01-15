@@ -25,9 +25,8 @@ export const CardEditor: React.FC<CardEditorProps> = ({
     if (typeof window === 'undefined') return;
 
     import('fabric').then((fabricModule) => {
-      // В fabric v5 может быть default export или named exports
-      const fabric = (fabricModule as any).default || fabricModule;
-      fabricRef.current = fabric;
+      // В fabric v5 используются именованные экспорты
+      fabricRef.current = fabricModule;
       setFabricLoaded(true);
     }).catch((err) => {
       console.error('Failed to load fabric:', err);
@@ -39,8 +38,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({
     if (!canvasRef.current || !fabricLoaded || !fabricRef.current) return;
 
     try {
-      const fabric = fabricRef.current;
-      const Canvas = fabric.Canvas;
+      const { Canvas, FabricImage } = fabricRef.current;
       
       if (!Canvas) {
         throw new Error('Canvas class not found in fabric');
@@ -62,23 +60,19 @@ export const CardEditor: React.FC<CardEditorProps> = ({
       } else if (initialImage) {
         // Загружаем изображение как фон
         const imageUrl = initialImage.url;
-        if (imageUrl) {
+        if (imageUrl && FabricImage) {
           // Преобразуем относительный URL в абсолютный, если нужно
           const fullUrl = imageUrl.startsWith('http') 
             ? imageUrl 
             : `${window.location.origin}${imageUrl}`;
           
-          const fabric = fabricRef.current;
-          const FabricImage = fabric.Image;
-          if (FabricImage) {
-            FabricImage.fromURL(fullUrl, (img: any) => {
-              if (img) {
-                img.scaleToWidth(canvas.width!);
-                img.scaleToHeight(canvas.height!);
-                canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-              }
-            }, { crossOrigin: 'anonymous' });
-          }
+          FabricImage.fromURL(fullUrl, (img: any) => {
+            if (img) {
+              img.scaleToWidth(canvas.width!);
+              img.scaleToHeight(canvas.height!);
+              canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+            }
+          }, { crossOrigin: 'anonymous' });
         }
       }
 
@@ -95,8 +89,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({
     if (!fabricCanvasRef.current || !fabricRef.current) return;
 
     try {
-      const fabric = fabricRef.current;
-      const Textbox = fabric.Textbox;
+      const { Textbox } = fabricRef.current;
       
       if (!Textbox) {
         throw new Error('Textbox class not found in fabric');

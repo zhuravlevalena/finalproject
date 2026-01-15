@@ -1,19 +1,20 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { marketplaceService } from '@/entities/marketplace/api/marketplace.service';
-import { templateService } from '@/entities/template/api/template.service';
-import { imageService } from '@/entities/image/api/image.service';
-import { productCardService } from '@/entities/productcard/api/productcard.service';
-import { productProfileService } from '@/entities/productprofile/api/productprofile.service';
+import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
+import { fetchMarketplacesThunk } from '@/entities/marketplace/model/marketplace.thunk';
+import { fetchTemplatesThunk } from '@/entities/template/model/template.thunk';
+import { uploadImageThunk } from '@/entities/image/model/image.thunk';
+import { createProductCardThunk } from '@/entities/productcard/model/productcard.thunk';
+import { getOrCreateProductProfileThunk } from '@/entities/productprofile/model/productprofile.thunk';
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Upload, Loader2 } from 'lucide-react';
+import type { CreateProductCardDto } from '@/entities/productcard/model/productcard.types';
 
 export default function CreateCard(): React.JSX.Element {
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
 
   const [selectedMarketplace, setSelectedMarketplace] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
@@ -22,38 +23,32 @@ export default function CreateCard(): React.JSX.Element {
   const [productType, setProductType] = useState('');
   const [canvasData, setCanvasData] = useState<Record<string, unknown> | null>(null);
 
-  const { data: marketplaces } = useQuery({
-    queryKey: ['marketplaces'],
-    queryFn: () => marketplaceService.getAll(),
-  });
+  const { marketplaces, loading: marketplacesLoading } = useAppSelector((state) => state.marketplace);
+  const { templates, loading: templatesLoading } = useAppSelector((state) => state.template);
+  const { uploading: isUploadingImage } = useAppSelector((state) => state.image);
+  const { creating: isCreatingCard } = useAppSelector((state) => state.productCard);
 
-  const { data: templates } = useQuery({
-    queryKey: ['templates', selectedMarketplace],
-    queryFn: () => templateService.getAll(selectedMarketplace || undefined),
-    enabled: !!selectedMarketplace,
-  });
+  useEffect(() => {
+    dispatch(fetchMarketplacesThunk());
+  }, [dispatch]);
 
-  const uploadImageMutation = useMutation({
-    mutationFn: (file: File) => imageService.upload(file),
-    onSuccess: (data) => {
-      setUploadedImageData({ id: data.id, url: data.url });
-    },
-  });
+  useEffect(() => {
+    if (selectedMarketplace) {
+      dispatch(fetchTemplatesThunk(selectedMarketplace));
+      setSelectedTemplate(null); // Сбрасываем выбранный шаблон при смене маркетплейса
+    } else {
+      setSelectedTemplate(null);
+    }
+  }, [dispatch, selectedMarketplace]);
 
-  const createCardMutation = useMutation({
-    mutationFn: (data: Parameters<typeof productCardService.create>[0]) =>
-      productCardService.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['productCards'] });
-      setLocation('/');
-    },
-  });
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setUploadedImage(file);
-      uploadImageMutation.mutate(file);
+      const result = await dispatch(uploadImageThunk(file));
+      if (uploadImageThunk.fulfilled.match(result)) {
+        setUploadedImageData({ id: result.payload.id, url: result.payload.url });
+      }
     }
   };
 
@@ -63,18 +58,25 @@ export default function CreateCard(): React.JSX.Element {
     // Создаем или получаем профиль товара
     let profileId: number | undefined;
     if (productType) {
-      const profile = await productProfileService.getOrCreate(productType);
-      profileId = profile.id;
+      const result = await dispatch(getOrCreateProductProfileThunk(productType));
+      if (getOrCreateProductProfileThunk.fulfilled.match(result)) {
+        profileId = result.payload.id;
+      }
     }
 
-    createCardMutation.mutate({
+    const cardData: CreateProductCardDto = {
       marketplaceId: selectedMarketplace || undefined,
       templateId: selectedTemplate || undefined,
       productProfileId: profileId,
       imageId: uploadedImageData?.id,
       canvasData,
       status: 'draft',
-    });
+    };
+
+    const result = await dispatch(createProductCardThunk(cardData));
+    if (createProductCardThunk.fulfilled.match(result)) {
+      setLocation('/');
+    }
   };
 
   return (
@@ -113,21 +115,25 @@ export default function CreateCard(): React.JSX.Element {
                 </select>
               </div>
 
-              {selectedMarketplace && templates && (
+              {selectedMarketplace && (
                 <div>
                   <label className="block text-sm font-medium mb-2">Шаблон</label>
-                  <select
-                    value={selectedTemplate || ''}
-                    onChange={(e) => setSelectedTemplate(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="">Выберите шаблон</option>
-                    {templates.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
+                  {templatesLoading ? (
+                    <div className="text-sm text-muted-foreground">Загрузка шаблонов...</div>
+                  ) : (
+                    <select
+                      value={selectedTemplate || ''}
+                      onChange={(e) => setSelectedTemplate(e.target.value ? Number(e.target.value) : null)}
+                      className="w-full p-2 border rounded"
+                    >
+                      <option value="">Выберите шаблон</option>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
@@ -165,7 +171,7 @@ export default function CreateCard(): React.JSX.Element {
                     <Upload className="h-4 w-4" />
                     Загрузить
                   </label>
-                  {uploadImageMutation.isPending && (
+                  {isUploadingImage && (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   )}
                 </div>

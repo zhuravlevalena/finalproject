@@ -21,7 +21,9 @@ class UserService {
     }
 
     static async refresh(): Promise<User> {
-        const response = await axios.get('/api/auth/refresh');
+        const response = await axios.get('/api/auth/refresh', {
+            withCredentials: true,
+        });
         const {user, accessToken} = AuthResponseSchema.parse(response.data);
         setAccessToken(accessToken);
         return user;    
@@ -32,7 +34,10 @@ class UserService {
         setAccessToken('');
     }
 
-
+    static googleAuth(): void {
+        // Редирект на сервер для инициации OAuth
+        window.location.href = '/api/auth/google';
+    }
 }
 
 export default UserService;
