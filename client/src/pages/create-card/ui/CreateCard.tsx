@@ -413,7 +413,7 @@ export default function CreateCard(): React.JSX.Element {
                     >
                       Очистить
                     </button>
->>>>>>> main
+  
                   )}
                 </div>
               </div>
