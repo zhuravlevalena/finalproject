@@ -1,21 +1,22 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { marketplaceService } from '@/entities/marketplace/api/marketplace.service';
-import { templateService } from '@/entities/template/api/template.service';
-import { imageService } from '@/entities/image/api/image.service';
-import { productCardService } from '@/entities/productcard/api/productcard.service';
-import { productProfileService } from '@/entities/productprofile/api/productprofile.service';
+import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
+import { fetchMarketplacesThunk } from '@/entities/marketplace/model/marketplace.thunk';
+import { fetchTemplatesThunk } from '@/entities/template/model/template.thunk';
+import { uploadImageThunk } from '@/entities/image/model/image.thunk';
+import { createProductCardThunk } from '@/entities/productcard/model/productcard.thunk';
+import { getOrCreateProductProfileThunk } from '@/entities/productprofile/model/productprofile.thunk';
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 import { Card } from '@/shared/ui/card';
 import { Upload, Loader2, Image as ImageIcon, Settings, FileText, X } from 'lucide-react';
+import type { CreateProductCardDto } from '@/entities/productcard/model/productcard.types';
 
 type CardSize = '800x600' | '1024x768' | '1200x900' | '1920x1080';
 type SlideCount = 1 | 2 | 3 | 4 | 5;
 
 export default function CreateCard(): React.JSX.Element {
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
 
   const [selectedMarketplace, setSelectedMarketplace] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
@@ -34,53 +35,43 @@ export default function CreateCard(): React.JSX.Element {
   const [slideCount, setSlideCount] = useState<SlideCount>(1);
   const [activeTab, setActiveTab] = useState<'settings' | 'images' | 'content'>('settings');
 
-  const { data: marketplaces } = useQuery({
-    queryKey: ['marketplaces'],
-    queryFn: () => marketplaceService.getAll(),
-  });
+  const { marketplaces, loading: marketplacesLoading } = useAppSelector((state) => state.marketplace);
+  const { templates, loading: templatesLoading } = useAppSelector((state) => state.template);
+  const { uploading: isUploadingImage } = useAppSelector((state) => state.image);
+  const { creating: isCreatingCard } = useAppSelector((state) => state.productCard);
 
-  const { data: templates } = useQuery({
-    queryKey: ['templates', selectedMarketplace],
-    queryFn: () => templateService.getAll(selectedMarketplace || undefined),
-    enabled: !!selectedMarketplace,
-  });
+  useEffect(() => {
+    dispatch(fetchMarketplacesThunk());
+  }, [dispatch]);
 
-  const uploadImageMutation = useMutation({
-    mutationFn: (file: File) => imageService.upload(file),
-    onSuccess: (data) => {
-      setUploadedImageData({ id: data.id, url: data.url });
-    },
-  });
+  useEffect(() => {
+    if (selectedMarketplace) {
+      dispatch(fetchTemplatesThunk(selectedMarketplace));
+      setSelectedTemplate(null); // Сбрасываем выбранный шаблон при смене маркетплейса
+    } else {
+      setSelectedTemplate(null);
+    }
+  }, [dispatch, selectedMarketplace]);
 
-  const uploadBackgroundMutation = useMutation({
-    mutationFn: (file: File) => imageService.upload(file),
-    onSuccess: (data) => {
-      setBackgroundImageData({ id: data.id, url: data.url });
-    },
-  });
-
-  const createCardMutation = useMutation({
-    mutationFn: (data: Parameters<typeof productCardService.create>[0]) =>
-      productCardService.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['productCards'] });
-      setLocation('/dashboard');
-    },
-  });
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setUploadedImage(file);
-      uploadImageMutation.mutate(file);
+      const result = await dispatch(uploadImageThunk(file));
+      if (uploadImageThunk.fulfilled.match(result)) {
+        setUploadedImageData({ id: result.payload.id, url: result.payload.url });
+      }
     }
   };
 
-  const handleBackgroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setBackgroundImage(file);
-      uploadBackgroundMutation.mutate(file);
+      const result = await dispatch(uploadImageThunk(file));
+      if (uploadImageThunk.fulfilled.match(result)) {
+        setBackgroundImageData({ id: result.payload.id, url: result.payload.url });
+      }
     }
   };
 
@@ -97,11 +88,13 @@ export default function CreateCard(): React.JSX.Element {
   const handleSave = async (canvasData: Record<string, unknown>) => {
     let profileId: number | undefined;
     if (productType) {
-      const profile = await productProfileService.getOrCreate(productType);
-      profileId = profile.id;
+      const result = await dispatch(getOrCreateProductProfileThunk(productType));
+      if (getOrCreateProductProfileThunk.fulfilled.match(result)) {
+        profileId = result.payload.id;
+      }
     }
 
-    createCardMutation.mutate({
+    const cardData: CreateProductCardDto = {
       marketplaceId: selectedMarketplace || undefined,
       templateId: selectedTemplate || undefined,
       productProfileId: profileId,
@@ -114,7 +107,12 @@ export default function CreateCard(): React.JSX.Element {
         backgroundImageId: backgroundImageData?.id,
       },
       status: 'draft',
-    });
+    };
+
+    const result = await dispatch(createProductCardThunk(cardData));
+    if (createProductCardThunk.fulfilled.match(result)) {
+      setLocation('/');
+    }
   };
 
   const sizeOptions: { value: CardSize; label: string; description: string }[] = [
@@ -139,30 +137,8 @@ export default function CreateCard(): React.JSX.Element {
           <Card className="p-6">
             <CardEditor
               onSave={handleSave}
-              initialImage={
-                uploadedImageData
-                  ? {
-                      id: uploadedImageData.id,
-                      url: uploadedImageData.url,
-                      userId: 0,
-                      type: 'uploaded' as const,
-                      createdAt: '',
-                      updatedAt: '',
-                    }
-                  : undefined
-              }
-              backgroundImage={
-                backgroundImageData
-                  ? {
-                      id: backgroundImageData.id,
-                      url: backgroundImageData.url,
-                      userId: 0,
-                      type: 'uploaded' as const,
-                      createdAt: '',
-                      updatedAt: '',
-                    }
-                  : undefined
-              }
+              initialImage={uploadedImageData ? { id: uploadedImageData.id, url: uploadedImageData.url } : undefined}
+              backgroundImage={backgroundImageData ? { id: backgroundImageData.id, url: backgroundImageData.url } : undefined}
               cardSize={cardSize}
               slideCount={slideCount}
             />
@@ -238,20 +214,24 @@ export default function CreateCard(): React.JSX.Element {
                 {selectedMarketplace && templates && (
                   <div>
                     <label className="block text-sm font-medium mb-2 text-gray-700">Шаблон</label>
-                    <select
-                      value={selectedTemplate || ''}
-                      onChange={(e) =>
-                        setSelectedTemplate(e.target.value ? Number(e.target.value) : null)
-                      }
-                      className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      <option value="">Выберите шаблон</option>
-                      {templates.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+                    {templatesLoading ? (
+                      <div className="text-sm text-muted-foreground">Загрузка шаблонов...</div>
+                    ) : (
+                      <select
+                        value={selectedTemplate || ''}
+                        onChange={(e) =>
+                          setSelectedTemplate(e.target.value ? Number(e.target.value) : null)
+                        }
+                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="">Выберите шаблон</option>
+                        {templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 )}
 
@@ -327,7 +307,7 @@ export default function CreateCard(): React.JSX.Element {
                       <Upload className="h-4 w-4" />
                       Загрузить изображение
                     </label>
-                    {uploadImageMutation.isPending && (
+                    {isUploadingImage && (
                       <div className="flex items-center gap-2 text-sm text-gray-600 py-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Загрузка...
@@ -378,7 +358,7 @@ export default function CreateCard(): React.JSX.Element {
                       <ImageIcon className="h-4 w-4" />
                       Выбрать фон
                     </label>
-                    {uploadBackgroundMutation.isPending && (
+                    {isUploadingImage && (
                       <div className="flex items-center gap-2 text-sm text-gray-600 py-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Загрузка...
@@ -433,6 +413,7 @@ export default function CreateCard(): React.JSX.Element {
                     >
                       Очистить
                     </button>
+  
                   )}
                 </div>
               </div>

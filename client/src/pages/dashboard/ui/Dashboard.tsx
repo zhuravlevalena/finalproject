@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
-import { productCardService } from '@/entities/productcard/api/productcard.service';
+import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
+import { fetchProductCardsThunk } from '@/entities/productcard/model/productcard.thunk';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Plus } from 'lucide-react';
 
 export default function Dashboard(): React.JSX.Element {
-  const { data: cards, isLoading } = useQuery({
-    queryKey: ['productCards'],
-    queryFn: () => productCardService.getAll(),
-  });
+  const dispatch = useAppDispatch();
+  const { cards, loading: isLoading } = useAppSelector((state) => state.productCard);
+  const { user, loading: isUserLoading } = useAppSelector((state) => state.user);
+
+  useEffect(() => {
+    // Ждем завершения загрузки пользователя перед загрузкой карточек
+    if (user && !isUserLoading) {
+      dispatch(fetchProductCardsThunk());
+    }
+  }, [dispatch, user, isUserLoading]);
 
   if (isLoading) {
     return (

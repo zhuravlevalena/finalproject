@@ -1,11 +1,10 @@
-export interface ProductProfile {
-  id: number;
-  userId: number;
-  productType?: string;
-  style?: string;
-  targetAudience?: string;
-  colorPalette?: Record<string, unknown>;
-  preferences?: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { z } from 'zod';
+import type { productProfileSchema } from './productprofile.schemas';
+
+export type ProductProfile = z.infer<typeof productProfileSchema>;
+
+export type ProductProfileState = {
+  profiles: ProductProfile[];
+  loading: boolean;
+  error: string | null;
+};

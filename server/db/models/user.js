@@ -15,7 +15,8 @@ module.exports = (sequelize, DataTypes) => {
     email: DataTypes.STRING,
     hashpass: DataTypes.STRING,
     role: DataTypes.STRING,
-    nsfwConsent: DataTypes.BOOLEAN
+    nsfwConsent: DataTypes.BOOLEAN,
+    googleId: DataTypes.STRING,
   }, {
     sequelize,
     modelName: 'User',
