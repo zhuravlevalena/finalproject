@@ -48,12 +48,10 @@ export default function Dashboard(): React.JSX.Element {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => (
-            <Link key={card.id} href={`/card/${card.id}`}>
+            <Link key={card.id} href={`/edit-card/${String(card.id)}`}>
               <Card className="cursor-pointer hover:shadow-lg transition-shadow">
                 <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">
-                    {card.title || 'Без названия'}
-                  </h3>
+                  <h3 className="font-semibold text-lg mb-2">{card.title || 'Без названия'}</h3>
                   <p className="text-sm text-muted-foreground mb-2">
                     {card.marketplace?.name || 'Без маркетплейса'}
                   </p>
