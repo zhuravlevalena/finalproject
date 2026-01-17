@@ -90,7 +90,7 @@ export function CardEditor({
     const activeObject = fabricCanvasRef.current.getActiveObject();
     setSelectedObject(activeObject);
 
-    if (activeObject && activeObject.type === 'textbox') {
+    if (activeObject?.type === 'textbox') {
       const textObj = activeObject as fabric.Textbox;
       setTextProps({
         fontSize: textObj.fontSize || 24,
@@ -336,7 +336,7 @@ export function CardEditor({
 
   // Обновление текстовых свойств
   const updateTextProperty = (property: string, value: any) => {
-    if (!fabricCanvasRef.current || !selectedObject || selectedObject.type !== 'textbox') return;
+    if (!fabricCanvasRef.current || selectedObject?.type !== 'textbox') return;
 
     const textObj = selectedObject as fabric.Textbox;
     textObj.set(property as any, value);
@@ -346,7 +346,7 @@ export function CardEditor({
 
   // Изменение размера шрифта
   const handleFontSizeChange = (delta: number) => {
-    if (!selectedObject || selectedObject.type !== 'textbox') return;
+    if (selectedObject?.type !== 'textbox') return;
     const textObj = selectedObject as fabric.Textbox;
     const newSize = Math.max(8, Math.min(200, (textObj.fontSize || 24) + delta));
     updateTextProperty('fontSize', newSize);

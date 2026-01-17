@@ -9,10 +9,10 @@ import Router from './Router/Router';
 function App(): React.JSX.Element {
   return (
     <Provider store={store}>
-      <TooltipProvider>
-        <Router />
-        <Toaster />
-      </TooltipProvider>
+        <TooltipProvider>
+          <Router />
+          <Toaster />
+        </TooltipProvider>
     </Provider>
   );
 }

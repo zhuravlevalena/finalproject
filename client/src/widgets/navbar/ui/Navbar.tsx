@@ -39,15 +39,17 @@ export function Navbar(): React.JSX.Element {
             </>
           ) : (
             <>
+              <a href="#examples" className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">
+                Примеры
+              </a>
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={() => setLocation('/login')}
                 className="cursor-pointer"
               >
-                Войти в аккаунт
+                Войти
               </Button>
               <Button
-                variant="ghost"
                 onClick={() => setLocation('/register')}
                 className="cursor-pointer"
               >
