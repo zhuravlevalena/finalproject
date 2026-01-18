@@ -6,10 +6,11 @@ import { fetchTemplatesThunk } from '@/entities/template/model/template.thunk';
 import { uploadImageThunk } from '@/entities/image/model/image.thunk';
 import { createProductCardThunk } from '@/entities/productcard/model/productcard.thunk';
 import { getOrCreateProductProfileThunk } from '@/entities/productprofile/model/productprofile.thunk';
-import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
+
 import { Card } from '@/shared/ui/card';
 import { Upload, Loader2, Image as ImageIcon, Settings, FileText, X } from 'lucide-react';
 import type { CreateProductCardDto } from '@/entities/productcard/model/productcard.types';
+import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 
 type CardSize = '800x600' | '1024x768' | '1200x900' | '1920x1080';
 type SlideCount = 1 | 2 | 3 | 4 | 5;
@@ -35,18 +36,20 @@ export default function CreateCard(): React.JSX.Element {
   const [slideCount, setSlideCount] = useState<SlideCount>(1);
   const [activeTab, setActiveTab] = useState<'settings' | 'images' | 'content'>('settings');
 
-  const { marketplaces, loading: marketplacesLoading } = useAppSelector((state) => state.marketplace);
+  const { marketplaces, loading: marketplacesLoading } = useAppSelector(
+    (state) => state.marketplace,
+  );
   const { templates, loading: templatesLoading } = useAppSelector((state) => state.template);
   const { uploading: isUploadingImage } = useAppSelector((state) => state.image);
   const { creating: isCreatingCard } = useAppSelector((state) => state.productCard);
 
   useEffect(() => {
-    dispatch(fetchMarketplacesThunk());
+    void dispatch(fetchMarketplacesThunk());
   }, [dispatch]);
 
   useEffect(() => {
     if (selectedMarketplace) {
-      dispatch(fetchTemplatesThunk(selectedMarketplace));
+      void dispatch(fetchTemplatesThunk(selectedMarketplace));
       setSelectedTemplate(null); // Сбрасываем выбранный шаблон при смене маркетплейса
     } else {
       setSelectedTemplate(null);
@@ -85,7 +88,10 @@ export default function CreateCard(): React.JSX.Element {
     setBackgroundImageData(null);
   };
 
-  const handleSave = async (canvasData: Record<string, unknown>) => {
+  const handleSave = async (
+    imageFile: File,
+    canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
+  ) => {
     let profileId: number | undefined;
     if (productType) {
       const result = await dispatch(getOrCreateProductProfileThunk(productType));
@@ -100,18 +106,25 @@ export default function CreateCard(): React.JSX.Element {
       productProfileId: profileId,
       imageId: uploadedImageData?.id,
       canvasData: {
-        ...canvasData,
-        cardContent,
-        slideCount,
-        cardSize,
-        backgroundImageId: backgroundImageData?.id,
+        fabric: canvasData?.fabric || null, // Полный Fabric JSON для восстановления
+        meta: {
+          ...canvasData?.meta,
+          cardContent,
+          slideCount,
+          cardSize,
+          backgroundImageId: backgroundImageData?.id,
+        },
       },
-      status: 'draft',
+      status: 'completed',
     };
 
-    const result = await dispatch(createProductCardThunk(cardData));
+    // Передаем файл в thunk
+    const result = await dispatch(createProductCardThunk({ data: cardData, imageFile }));
     if (createProductCardThunk.fulfilled.match(result)) {
-      setLocation('/');
+      // Небольшая задержка для обновления списка карточек
+      setTimeout(() => {
+        setLocation('/dashboard');
+      }, 100);
     }
   };
 
@@ -137,8 +150,16 @@ export default function CreateCard(): React.JSX.Element {
           <Card className="p-6">
             <CardEditor
               onSave={handleSave}
-              initialImage={uploadedImageData ? { id: uploadedImageData.id, url: uploadedImageData.url } : undefined}
-              backgroundImage={backgroundImageData ? { id: backgroundImageData.id, url: backgroundImageData.url } : undefined}
+              initialImage={
+                uploadedImageData
+                  ? { id: uploadedImageData.id, url: uploadedImageData.url }
+                  : undefined
+              }
+              backgroundImage={
+                backgroundImageData
+                  ? { id: backgroundImageData.id, url: backgroundImageData.url }
+                  : undefined
+              }
               cardSize={cardSize}
               slideCount={slideCount}
             />
@@ -413,7 +434,6 @@ export default function CreateCard(): React.JSX.Element {
                     >
                       Очистить
                     </button>
-  
                   )}
                 </div>
               </div>
