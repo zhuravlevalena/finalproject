@@ -1,4 +1,5 @@
-import { useLocation } from 'wouter';
+import { useState } from 'react';
+import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/shared/hooks/use-auth';
 import { Button } from '@/shared/ui/button';
 import { LogoutButton } from '@/features/auth/logout/ui/LogoutButton';

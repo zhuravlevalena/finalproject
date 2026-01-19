@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { fabric } from 'fabric';
-import { cardVersionService } from '@/entities/cardversion/api/cardversion.service';
-import { useDebounce } from '@/shared/hooks/use-debounce';
 import { useToast } from '@/shared/ui/toaster';
 import { Progress } from '@/shared/ui/progress';
 import {
@@ -42,7 +40,6 @@ type CardEditorProps = {
   card?: {
     canvasData?: Record<string, unknown>;
   };
-  autoSaveEnabled?: boolean;
 };
 export function CardEditor({
   onSave,
@@ -50,8 +47,6 @@ export function CardEditor({
   backgroundImage,
   cardSize,
   card,
-  autoSaveEnabled = true,
-  versionToLoad,
 }: CardEditorProps): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
@@ -63,10 +58,9 @@ export function CardEditor({
   const [zoom, setZoom] = useState(100);
   const [isLoading, setIsLoading] = useState(false);
   const [canvasData, setCanvasData] = useState<Record<string, unknown> | null>(null);
-  const lastSavedDataRef = useRef<string>('');
   const [exportProgress, setExportProgress] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
-  const { success, error: showError, info } = useToast();
+  const { success, error: showError } = useToast();
 
   // Текстовые свойства для панели редактирования
   const [textProps, setTextProps] = useState({
@@ -197,50 +191,6 @@ export function CardEditor({
       { crossOrigin: 'anonymous' },
     );
   }, [backgroundImage, saveHistory]);
-
-  // Загрузка версии при изменении versionToLoad
-  useEffect(() => {
-    if (!fabricCanvasRef.current || !versionToLoad?.canvasData) return;
-
-    try {
-      const canvasData = typeof versionToLoad.canvasData === 'string'
-        ? JSON.parse(versionToLoad.canvasData)
-        : versionToLoad.canvasData;
-      
-      fabricCanvasRef.current.loadFromJSON(canvasData, () => {
-        fabricCanvasRef.current?.renderAll();
-        saveHistory();
-        setCanvasData(canvasData);
-      });
-    } catch (err) {
-      console.error('Error loading version:', err);
-    }
-  }, [versionToLoad, saveHistory]);
-
-  // Автосохранение версий
-  const debouncedCanvasData = useDebounce(canvasData, 3000);
-
-  useEffect(() => {
-    if (!card?.id || !debouncedCanvasData || !autoSaveEnabled) return;
-
-    const dataString = JSON.stringify(debouncedCanvasData);
-    
-    // Проверяем, изменились ли данные
-    if (dataString === lastSavedDataRef.current) return;
-
-    const handleAutoSave = async () => {
-      try {
-        await cardVersionService.autoSave(card.id, debouncedCanvasData);
-        lastSavedDataRef.current = dataString;
-        info('Черновик сохранен', 2000);
-      } catch (err) {
-        console.error('Ошибка автосохранения:', err);
-      }
-    };
-
-    handleAutoSave();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedCanvasData, card?.id, autoSaveEnabled]);
 
   // Добавление основного изображения
   useEffect(() => {

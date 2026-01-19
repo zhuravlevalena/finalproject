@@ -1,5 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { productCardService, type ProductCardFilters } from '../api/productcard.service';
+import { productCardService } from '../api/productcard.service';
 import type { ProductCard, CreateProductCardDto } from './productcard.types';
 
 export const fetchProductCardsThunk = createAsyncThunk(

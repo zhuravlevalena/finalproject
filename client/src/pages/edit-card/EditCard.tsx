@@ -1,15 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
 import { productCardService } from '@/entities/productcard/api/productcard.service';
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
-import { CardHistory } from '@/widgets/card-history/ui/CardHistory';
-import type { CardVersion } from '@/entities/cardversion/model/cardversion.types';
 import { useToast } from '@/shared/ui/toaster';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
-import { Loader2 } from 'lucide-react';
 
 export default function EditCard(): React.JSX.Element {
   const [, params] = useRoute('/edit-card/:id');
@@ -43,16 +40,10 @@ export default function EditCard(): React.JSX.Element {
     },
   });
 
-<<<<<<< HEAD
-  const [selectedVersion, setSelectedVersion] = useState<CardVersion | null>(null);
-
-  const handleSave = async (canvasData: Record<string, unknown>) => {
-=======
   const handleSave = async (
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
   ) => {
->>>>>>> main
     if (!cardId) return;
 
     // ПРАВИЛЬНО: передаем объект с canvasData и imageFile
@@ -63,16 +54,6 @@ export default function EditCard(): React.JSX.Element {
       },
       imageFile,
     });
-  };
-
-  const handleLoadVersion = (version: CardVersion) => {
-    setSelectedVersion(version);
-    // Версия будет загружена в CardEditor через prop
-  };
-
-  const handleRestore = (version: CardVersion) => {
-    // Обновить карточку после восстановления
-    queryClient.invalidateQueries({ queryKey: ['productCard', cardId] });
   };
 
   if (isLoading) {
@@ -197,16 +178,6 @@ export default function EditCard(): React.JSX.Element {
         <div className="lg:col-span-2">
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Редактор карточки</h2>
-<<<<<<< HEAD
-            <CardEditor 
-              card={card} 
-              onSave={handleSave} 
-              initialImage={card.image}
-              cardSize={card.canvasData?.cardSize as string || '1024x768'}
-              slideCount={(card.canvasData?.slideCount as number) || 1}
-              autoSaveEnabled={true}
-              versionToLoad={selectedVersion ? { canvasData: selectedVersion.canvasData } : undefined}
-=======
             <CardEditor
               card={cardForEditor}
               onSave={handleSave}
@@ -214,7 +185,6 @@ export default function EditCard(): React.JSX.Element {
               backgroundImage={backgroundImage}
               cardSize={cardSize}
               slideCount={slideCount}
->>>>>>> main
             />
           </Card>
         </div>
@@ -249,14 +219,6 @@ export default function EditCard(): React.JSX.Element {
               </div>
             </div>
           </Card>
-
-          {cardId && (
-            <CardHistory 
-              cardId={cardId} 
-              onRestore={handleRestore}
-              onLoadVersion={handleLoadVersion}
-            />
-          )}
         </div>
       </div>
     </div>
