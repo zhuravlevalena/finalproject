@@ -1,11 +1,13 @@
-import { useLocation, Link } from 'wouter';
+import { useLocation } from 'wouter';
 import { useAuth } from '@/shared/hooks/use-auth';
 import { Button } from '@/shared/ui/button';
 import { LogoutButton } from '@/features/auth/logout/ui/LogoutButton';
+import { TemplateSelectorModal } from '@/features/template-selector/ui/TemplateSelectorModal';
 
 export function Navbar(): React.JSX.Element {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <nav className="border-b border-border bg-card">
@@ -34,6 +36,13 @@ export function Navbar(): React.JSX.Element {
               >
                 Создать карточку
               </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setIsModalOpen(true)}
+                className="cursor-pointer"
+              >
+                Шаблоны
+              </Button>
               <LogoutButton />
             </>
           ) : (
@@ -58,6 +67,8 @@ export function Navbar(): React.JSX.Element {
           )}
         </div>
       </div>
+
+      <TemplateSelectorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </nav>
   );
 }

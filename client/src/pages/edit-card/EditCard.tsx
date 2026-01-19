@@ -25,8 +25,13 @@ export default function EditCard(): React.JSX.Element {
   });
 
   const updateCardMutation = useMutation({
-    mutationFn: (data: { canvasData: Record<string, unknown> }) =>
-      productCardService.update(cardId!, { canvasData: data.canvasData }),
+    mutationFn: ({
+      canvasData,
+      imageFile,
+    }: {
+      canvasData: Record<string, unknown>;
+      imageFile?: File;
+    }) => productCardService.update(cardId!, { canvasData }, imageFile),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['productCards'] });
       queryClient.invalidateQueries({ queryKey: ['productCard', cardId] });
@@ -38,11 +43,26 @@ export default function EditCard(): React.JSX.Element {
     },
   });
 
+<<<<<<< HEAD
   const [selectedVersion, setSelectedVersion] = useState<CardVersion | null>(null);
 
   const handleSave = async (canvasData: Record<string, unknown>) => {
+=======
+  const handleSave = async (
+    imageFile: File,
+    canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
+  ) => {
+>>>>>>> main
     if (!cardId) return;
-    updateCardMutation.mutate({ canvasData });
+
+    // ПРАВИЛЬНО: передаем объект с canvasData и imageFile
+    updateCardMutation.mutate({
+      canvasData: {
+        fabric: canvasData?.fabric || null,
+        meta: canvasData?.meta || {},
+      },
+      imageFile,
+    });
   };
 
   const handleLoadVersion = (version: CardVersion) => {
@@ -102,6 +122,73 @@ export default function EditCard(): React.JSX.Element {
     );
   }
 
+  // Извлекаем параметры из canvasData.meta с проверками безопасности
+  const canvasData =
+    (card.canvasData as
+      | { meta?: Record<string, unknown>; fabric?: Record<string, unknown> }
+      | null
+      | undefined) || undefined;
+  const meta = canvasData?.meta;
+
+  // Безопасное извлечение cardSize
+  let cardSize = '1024x768';
+  if (meta && typeof meta === 'object' && 'cardSize' in meta && typeof meta.cardSize === 'string') {
+    cardSize = meta.cardSize;
+  }
+
+  // Безопасное извлечение slideCount
+  let slideCount = 1;
+  if (
+    meta &&
+    typeof meta === 'object' &&
+    'slideCount' in meta &&
+    typeof meta.slideCount === 'number'
+  ) {
+    slideCount = meta.slideCount;
+  }
+
+  // Преобразуем image в нужный формат с проверками
+  let initialImage: { id: number; url: string } | undefined;
+  if (card.image) {
+    const imageData = card.image as unknown as { id?: number; url?: string };
+    if (imageData?.id && imageData?.url) {
+      initialImage = { id: imageData.id, url: imageData.url };
+    } else if (card.imageId) {
+      initialImage = { id: card.imageId, url: '' };
+    }
+  } else if (card.imageId) {
+    initialImage = { id: card.imageId, url: '' };
+  }
+
+  // Получаем backgroundImage из meta, если есть ID
+  let backgroundImage: { id: number; url: string } | undefined;
+  if (
+    meta &&
+    typeof meta === 'object' &&
+    'backgroundImageId' in meta &&
+    typeof meta.backgroundImageId === 'number'
+  ) {
+    const { backgroundImageId } = meta;
+    if (card.image) {
+      const imageData = card.image as unknown as { url?: string };
+      if (imageData?.url) {
+        backgroundImage = { id: backgroundImageId, url: imageData.url };
+      }
+    }
+  }
+
+  // Преобразуем card в нужный формат для CardEditor
+  let generatedImageUrl: string | undefined;
+  if (card.generatedImage) {
+    const generatedImageData = card.generatedImage as unknown as { url?: string };
+    generatedImageUrl = generatedImageData?.url;
+  }
+
+  const cardForEditor = {
+    canvasData,
+    generatedImage: generatedImageUrl ? { url: generatedImageUrl } : undefined,
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Редактировать карточку</h1>
@@ -110,6 +197,7 @@ export default function EditCard(): React.JSX.Element {
         <div className="lg:col-span-2">
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Редактор карточки</h2>
+<<<<<<< HEAD
             <CardEditor 
               card={card} 
               onSave={handleSave} 
@@ -118,6 +206,15 @@ export default function EditCard(): React.JSX.Element {
               slideCount={(card.canvasData?.slideCount as number) || 1}
               autoSaveEnabled={true}
               versionToLoad={selectedVersion ? { canvasData: selectedVersion.canvasData } : undefined}
+=======
+            <CardEditor
+              card={cardForEditor}
+              onSave={handleSave}
+              initialImage={initialImage}
+              backgroundImage={backgroundImage}
+              cardSize={cardSize}
+              slideCount={slideCount}
+>>>>>>> main
             />
           </Card>
         </div>
