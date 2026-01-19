@@ -1,8 +1,9 @@
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/shared/hooks/use-auth';
 import { Button } from '@/shared/ui/button';
 import { LogoutButton } from '@/features/auth/logout/ui/LogoutButton';
 import { TemplateSelectorModal } from '@/features/template-selector/ui/TemplateSelectorModal';
+import { useState } from 'react';
 
 export function Navbar(): React.JSX.Element {
   const { user } = useAuth();
@@ -47,7 +48,10 @@ export function Navbar(): React.JSX.Element {
             </>
           ) : (
             <>
-              <a href="#examples" className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">
+              <a
+                href="#examples"
+                className="text-sm text-muted-foreground hover:text-foreground cursor-pointer"
+              >
                 Примеры
               </a>
               <Button
@@ -57,10 +61,7 @@ export function Navbar(): React.JSX.Element {
               >
                 Войти
               </Button>
-              <Button
-                onClick={() => setLocation('/register')}
-                className="cursor-pointer"
-              >
+              <Button onClick={() => setLocation('/register')} className="cursor-pointer">
                 Создать аккаунт
               </Button>
             </>
