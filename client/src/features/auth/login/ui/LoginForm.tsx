@@ -4,24 +4,15 @@ import { useAppDispatch } from '@/shared/lib/hooks';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import UserService from '@/entities/user/api/user.service';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export default function LoginForm(): React.JSX.Element {
   const dispatch = useAppDispatch();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPassword, setShowPassword] = useState(false);
-  const emailRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
-  const submitButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    // Автофокус на первое поле при открытии формы
-    emailRef.current?.focus();
-  }, []);
 
   const submitHandler = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -70,125 +61,53 @@ export default function LoginForm(): React.JSX.Element {
     <Card className="w-full max-w-md mx-auto shadow-xl">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold text-center">Вход в аккаунт</CardTitle>
-        <p className="text-center text-sm text-gray-600">Войдите, чтобы начать играть</p>
+        <p className="text-center text-sm text-muted-foreground">Войдите, чтобы начать играть</p>
       </CardHeader>
       <CardContent>
         <form onSubmit={submitHandler} className="space-y-4">
           <div className="space-y-2">
             <label
               htmlFor="email"
-              className="text-sm font-medium leading-none text-gray-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               Email
             </label>
             <input
-              ref={emailRef}
               id="email"
               name="email"
               type="email"
               required
-              autoComplete="off"
-              onFocus={(e) => {
-                // Предотвращаем автозаполнение при программном фокусе
-                const target = e.target as HTMLInputElement;
-                if (target.value === '') {
-                  target.setAttribute('readonly', 'readonly');
-                  setTimeout(() => {
-                    target.removeAttribute('readonly');
-                  }, 0);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  passwordRef.current?.focus();
-                } else if (e.key === 'Tab' && !e.shiftKey) {
-                  e.preventDefault();
-                  passwordRef.current?.focus();
-                }
-              }}
-              className="flex h-12 w-full rounded-2xl border border-white/40 organic-input px-4 py-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
+              className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="example@email.com"
             />
-            {errors.email && <p className="text-sm text-red-300">{errors.email}</p>}
+            {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">
             <label
               htmlFor="password"
-              className="text-sm font-medium leading-none text-gray-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               Пароль
             </label>
-            <div className="relative">
-              <input
-                ref={passwordRef}
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                required
-                autoComplete="off"
-                onFocus={(e) => {
-                  // Предотвращаем автозаполнение при программном фокусе
-                  const target = e.target as HTMLInputElement;
-                  if (target.value === '') {
-                    target.setAttribute('readonly', 'readonly');
-                    setTimeout(() => {
-                      target.removeAttribute('readonly');
-                    }, 0);
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    submitButtonRef.current?.click();
-                  } else if (e.key === 'Tab' && !e.shiftKey) {
-                    e.preventDefault();
-                    submitButtonRef.current?.focus();
-                  } else if (e.key === 'Tab' && e.shiftKey) {
-                    e.preventDefault();
-                    emailRef.current?.focus();
-                  }
-                }}
-                className="flex h-12 w-full rounded-2xl border border-border/50 organic-input px-4 py-3 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
-                placeholder="Введите пароль"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Введите пароль"
+            />
             {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
           </div>
 
-              {errors.submit && (
-                <div className="p-3 text-sm text-red-300 bg-red-500/20 backdrop-blur-sm rounded-2xl border border-red-400/30">
-                  {errors.submit}
-                </div>
-              )}
+          {errors.submit && (
+            <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
+              {errors.submit}
+            </div>
+          )}
 
-          <Button 
-            ref={submitButtonRef}
-            type="submit" 
-            variant="default"
-            className="w-full" 
-            disabled={isLoading} 
-            size="lg"
-            onKeyDown={(e) => {
-              if (e.key === 'Tab' && e.shiftKey) {
-                e.preventDefault();
-                passwordRef.current?.focus();
-              }
-            }}
-          >
+          <Button type="submit" className="w-full" disabled={isLoading} size="lg">
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -208,13 +127,13 @@ export default function LoginForm(): React.JSX.Element {
             </div>
           </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => UserService.googleAuth()}
-                disabled={isLoading}
-              >
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => UserService.googleAuth()}
+            disabled={isLoading}
+          >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -236,12 +155,12 @@ export default function LoginForm(): React.JSX.Element {
             Войти через Google
           </Button>
 
-          <div className="text-center text-sm text-gray-600">
+          <div className="text-center text-sm text-muted-foreground">
             Нет аккаунта?{' '}
             <button
               type="button"
               onClick={() => setLocation('/register')}
-              className="text-purple-600 hover:text-purple-700 underline font-medium"
+              className="text-primary hover:underline font-medium"
             >
               Зарегистрироваться
             </button>

@@ -17,7 +17,9 @@ export default function RegisterPage(): React.JSX.Element {
           <h1 className="text-4xl md:text-5xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-b from-foreground to-foreground/50 mb-2 tracking-tighter">
             Регистрация
           </h1>
-          
+          <p className="text-muted-foreground">
+            Присоединяйтесь к игре и начните свой путь к победе
+          </p>
         </motion.div>
 
         <motion.div

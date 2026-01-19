@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { fabric } from 'fabric';
-import { useToast } from '@/shared/ui/toaster';
-import { Progress } from '@/shared/ui/progress';
 import {
   Type,
   Image as ImageIcon,
@@ -38,7 +36,13 @@ type CardEditorProps = {
   cardSize: string;
   slideCount: number;
   card?: {
-    canvasData?: Record<string, unknown>;
+    canvasData?: {
+      fabric?: Record<string, unknown>;
+      meta?: Record<string, unknown>;
+    };
+    generatedImage?: {
+      url: string;
+    };
   };
 };
 export function CardEditor({
@@ -57,10 +61,6 @@ export function CardEditor({
   });
   const [zoom, setZoom] = useState(100);
   const [isLoading, setIsLoading] = useState(false);
-  const [canvasData, setCanvasData] = useState<Record<string, unknown> | null>(null);
-  const [exportProgress, setExportProgress] = useState(0);
-  const [isExporting, setIsExporting] = useState(false);
-  const { success, error: showError } = useToast();
 
   // Текстовые свойства для панели редактирования
   const [textProps, setTextProps] = useState({
@@ -127,17 +127,18 @@ export function CardEditor({
     });
 
     // Загружаем сохраненные данные, если есть
-    if (card?.canvasData) {
-      try {
-        const canvasData = typeof card.canvasData === 'string' 
-          ? JSON.parse(card.canvasData) 
-          : card.canvasData;
-        canvas.loadFromJSON(canvasData, () => {
-          canvas.renderAll();
-          saveHistory();
-        });
-      } catch (err) {
-        console.error('Error loading canvas data:', err);
+    if (card?.canvasData && typeof card.canvasData === 'object' && 'fabric' in card.canvasData) {
+      const canvasData = card.canvasData as { fabric?: Record<string, unknown> };
+      const fabricData = canvasData.fabric;
+      if (fabricData) {
+        try {
+          canvas.loadFromJSON(fabricData, () => {
+            canvas.renderAll();
+            saveHistory();
+          });
+        } catch (err) {
+          console.error('Error loading canvas data:', err);
+        }
       }
     }
 
@@ -170,7 +171,7 @@ export function CardEditor({
       canvas.dispose();
       fabricCanvasRef.current = null;
     };
-  }, [cardSize, saveHistory, updateSelectedObject]);
+  }, [cardSize, saveHistory, updateSelectedObject, card]);
 
   // Установка фона
   useEffect(() => {
@@ -369,8 +370,8 @@ export function CardEditor({
   };
 
   // Обновление текстовых свойств
-  const updateTextProperty = (property: string, value: any) => {
-    if (!fabricCanvasRef.current || !selectedObject || selectedObject.type !== 'textbox') return;
+  const updateTextProperty = (property: string, value: string | number): void => {
+    if (!fabricCanvasRef.current || selectedObject?.type !== 'textbox') return;
 
     const textObj = selectedObject as fabric.Textbox;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -380,22 +381,23 @@ export function CardEditor({
   };
 
   // Изменение размера шрифта
-  const handleFontSizeChange = (delta: number) => {
-    if (!selectedObject || selectedObject.type !== 'textbox') return;
+  const handleFontSizeChange = (delta: number): void => {
+    if (selectedObject?.type !== 'textbox') return;
     const textObj = selectedObject as fabric.Textbox;
     const newSize = Math.max(8, Math.min(200, (textObj.fontSize || 24) + delta));
     updateTextProperty('fontSize', newSize);
   };
 
   // Экспорт
-  const handleExport = () => {
+  const handleExport = (): void => {
     if (!fabricCanvasRef.current) return;
     const dataURL = fabricCanvasRef.current.toDataURL({
       format: 'png',
       quality: 1,
     });
     const link = document.createElement('a');
-    link.download = `card-${Date.now()}.png`;
+    const timestamp = String(Date.now());
+    link.download = `card-${timestamp}.png`;
     link.href = dataURL;
     link.click();
   };
@@ -547,27 +549,13 @@ export function CardEditor({
               {isLoading ? 'Сохранение...' : 'Сохранить'}
             </span>
           </button>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={handleExport}
-              disabled={isExporting}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline text-sm">
-                {isExporting ? 'Экспорт...' : 'Скачать'}
-              </span>
-            </button>
-            {isExporting && (
-              <div className="w-full min-w-[200px]">
-                <Progress 
-                  value={exportProgress} 
-                  showLabel 
-                  label="Экспорт карточки"
-                />
-              </div>
-            )}
-          </div>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline text-sm">Скачать</span>
+          </button>
         </div>
       </div>
 

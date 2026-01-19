@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'wouter';
+import { useLocation } from 'wouter';
 import { useAuth } from '@/shared/hooks/use-auth';
 import { Button } from '@/shared/ui/button';
 import { LogoutButton } from '@/features/auth/logout/ui/LogoutButton';
@@ -13,11 +13,12 @@ export function Navbar(): React.JSX.Element {
   return (
     <nav className="border-b border-border bg-card">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <Link href="/">
-          <span className="text-2xl font-bold text-primary cursor-pointer hover:opacity-80 transition-opacity">
-            AI-Ассистент
-          </span>
-        </Link>
+        <button
+          onClick={() => setLocation('/')}
+          className="text-2xl font-bold text-primary cursor-pointer hover:opacity-80 transition-opacity"
+        >
+          AI-Ассистент
+        </button>
 
         <div className="flex gap-4 items-center">
           {user ? (
@@ -48,17 +49,15 @@ export function Navbar(): React.JSX.Element {
             </>
           ) : (
             <>
-              <a href="#examples" className="text-sm text-muted-foreground hover:text-foreground cursor-pointer">
-                Примеры
-              </a>
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => setLocation('/login')}
                 className="cursor-pointer"
               >
-                Войти
+                Войти в аккаунт
               </Button>
               <Button
+                variant="ghost"
                 onClick={() => setLocation('/register')}
                 className="cursor-pointer"
               >

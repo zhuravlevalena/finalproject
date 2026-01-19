@@ -1,8 +1,7 @@
 import React from 'react';
-import { ToastProvider } from './toast';
 
 export function Toaster() {
-  return null; // ToastProvider handles rendering
+  // Simple toaster implementation - can be enhanced later
+  return null;
 }
 
-export { ToastProvider, useToast } from './toast';

@@ -11,12 +11,6 @@ module.exports = (sequelize, DataTypes) => {
       ProductCard.belongsTo(models.ProductProfile, { foreignKey: 'productProfileId', as: 'productProfile' });
       ProductCard.belongsTo(models.Image, { foreignKey: 'imageId', as: 'image' });
       ProductCard.belongsTo(models.Image, { foreignKey: 'generatedImageId', as: 'generatedImage' });
-      // Связь с версиями
-      ProductCard.hasMany(models.CardVersion, { 
-        foreignKey: 'cardId', 
-        as: 'versions',
-        onDelete: 'CASCADE'
-      });
     }
   }
   ProductCard.init({

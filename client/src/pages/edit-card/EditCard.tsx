@@ -3,16 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
 import { productCardService } from '@/entities/productcard/api/productcard.service';
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
-import { useToast } from '@/shared/ui/toaster';
-import { Skeleton } from '@/shared/ui/skeleton';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
+import { Loader2 } from 'lucide-react';
 
 export default function EditCard(): React.JSX.Element {
   const [, params] = useRoute('/edit-card/:id');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { success, error: showError } = useToast();
   const cardId = params?.id ? Number(params.id) : null;
 
   const { data: card, isLoading } = useQuery({
@@ -32,11 +30,7 @@ export default function EditCard(): React.JSX.Element {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['productCards'] });
       queryClient.invalidateQueries({ queryKey: ['productCard', cardId] });
-      success('Карточка успешно сохранена');
       setLocation('/dashboard');
-    },
-    onError: () => {
-      showError('Ошибка при сохранении карточки');
     },
   });
 
@@ -59,32 +53,9 @@ export default function EditCard(): React.JSX.Element {
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Skeleton variant="text" className="h-8 w-64 mb-6" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <Card className="p-6">
-              <Skeleton variant="text" className="h-6 w-48 mb-4" />
-              <Skeleton variant="rectangular" className="h-96 w-full rounded-lg" />
-            </Card>
-          </div>
-          <div className="space-y-6">
-            <Card className="p-6">
-              <Skeleton variant="text" className="h-6 w-32 mb-4" />
-              <div className="space-y-4">
-                <Skeleton variant="text" className="h-4 w-full" />
-                <Skeleton variant="text" className="h-4 w-3/4" />
-                <Skeleton variant="text" className="h-4 w-1/2" />
-              </div>
-            </Card>
-            <Card className="p-6">
-              <Skeleton variant="text" className="h-6 w-40 mb-4" />
-              <div className="space-y-2">
-                <Skeleton variant="rectangular" className="h-16 w-full rounded" />
-                <Skeleton variant="rectangular" className="h-16 w-full rounded" />
-                <Skeleton variant="rectangular" className="h-16 w-full rounded" />
-              </div>
-            </Card>
-          </div>
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="mt-4">Загрузка карточки...</p>
         </div>
       </div>
     );

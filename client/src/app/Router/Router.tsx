@@ -11,7 +11,6 @@ import AuthCallback from '@/pages/auth-callback/ui/AuthCallback';
 import { useAppDispatch, useAppSelector } from '@/shared/lib/hooks';
 import { refreshThunk } from '@/entities/user/model/user.thunk';
 import EditCard from '@/pages/edit-card/EditCard';
-import VerifyEmail from '@/pages/verify-email/ui/VerifyEmail';
 
 function Layout({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [location] = useLocation();
@@ -21,7 +20,7 @@ function Layout({ children }: { children: React.ReactNode }): React.JSX.Element 
     <div
       className={`${
         isAuthPage ? 'min-h-screen' : 'h-screen'
-      } bg-background flex flex-col font-body overflow-hidden`}
+      } bg-background flex flex-col font-body selection:bg-primary/30 selection:text-white overflow-hidden`}
     >
       {!isAuthPage && <Navbar />}
       <main className={isAuthPage ? 'flex-grow' : 'flex-1 overflow-y-auto'}>{children}</main>
@@ -37,8 +36,7 @@ function Layout({ children }: { children: React.ReactNode }): React.JSX.Element 
 
 export default function Router(): React.JSX.Element {
   const dispatch = useAppDispatch();
-  const user = useAppSelector((store) => store.user.user);
-  const isLogged = !!user;
+  const isLogged = useAppSelector((store) => !!store.user.user);
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
@@ -49,7 +47,7 @@ export default function Router(): React.JSX.Element {
     if (isLogged && (location === '/login' || location === '/register')) {
       setLocation('/');
     }
-  }, [isLogged, location, setLocation, user]);
+  }, [isLogged, location, setLocation]);
 
   return (
     <Layout>
@@ -58,7 +56,6 @@ export default function Router(): React.JSX.Element {
         <Route path="/dashboard">{isLogged ? <Dashboard /> : <Login />}</Route>
         <Route path="/create-card">{isLogged ? <CreateCard /> : <Login />}</Route>
         <Route path="/edit-card/:id">{isLogged ? <EditCard /> : <Login />}</Route>
-        <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/login">{!isLogged ? <Login /> : null}</Route>
         <Route path="/register">{!isLogged ? <Register /> : null}</Route>
         <Route path="/auth/callback" component={AuthCallback} />

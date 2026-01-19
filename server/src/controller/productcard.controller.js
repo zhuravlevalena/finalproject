@@ -14,15 +14,7 @@ class ProductCardController {
   static async getAllCards(req, res) {
     try {
       const userId = req.user.id;
-      const filters = {
-        search: req.query.search,
-        marketplaceId: req.query.marketplaceId ? Number(req.query.marketplaceId) : undefined,
-        status: req.query.status,
-        sortBy: req.query.sortBy || 'createdAt',
-        sortOrder: req.query.sortOrder || 'DESC'
-      };
-      
-      const cards = await ProductCardService.getAllCards(userId, filters);
+      const cards = await ProductCardService.getAllCards(userId);
       return res.json(cards);
     } catch (error) {
       console.error('Error getting cards:', error);
