@@ -1,6 +1,6 @@
 import React from 'react';
 
-type TooltipProviderProps = {
+interface TooltipProviderProps {
   children: React.ReactNode;
 }
 

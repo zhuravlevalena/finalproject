@@ -35,18 +35,8 @@ export default {
         body: ['system-ui', '-apple-system', 'sans-serif'],
         display: ['system-ui', '-apple-system', 'sans-serif'],
       },
-      borderRadius: {
-        'glass': '2rem',
-        'organic': '1.5rem',
-      },
-      backdropBlur: {
-        'glass': '20px',
-      },
-      boxShadow: {
-        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
-        'gel': '0 4px 15px 0 rgba(102, 126, 234, 0.4)',
-      },
     },
   },
   plugins: [],
 }
+

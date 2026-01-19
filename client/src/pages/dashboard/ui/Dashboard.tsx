@@ -18,43 +18,21 @@ export default function Dashboard(): React.JSX.Element {
   const { cards, loading: isLoading } = useAppSelector((state) => state.productCard);
   const { user, loading: isUserLoading } = useAppSelector((state) => state.user);
 
-  const [deleteDialog, setDeleteDialog] = useState<{
-    isOpen: boolean;
-    cardId: number | null;
-    cardTitle: string;
-  }>({
-    isOpen: false,
-    cardId: null,
-    cardTitle: '',
-  });
-
   useEffect(() => {
     if (user && !isUserLoading) {
       void dispatch(fetchProductCardsThunk());
     }
   }, [dispatch, user, isUserLoading]);
 
-  const handleDeleteClick = (cardId: number, cardTitle: string): void => {
-    setDeleteDialog({
-      isOpen: true,
-      cardId,
-      cardTitle: cardTitle || 'Без названия',
-    });
-  };
-
-  const handleDeleteConfirm = async (): Promise<void> => {
-    if (!deleteDialog.cardId) return;
-
-    try {
-      await dispatch(deleteProductCardThunk(deleteDialog.cardId)).unwrap();
-      // Обновляем список карточек после удаления
-      void dispatch(fetchProductCardsThunk());
-      toast.success('Карточка успешно удалена');
-      setDeleteDialog({ isOpen: false, cardId: null, cardTitle: '' });
-    } catch (err) {
-      console.error('Ошибка при удалении карточки:', err);
-      toast.error('Не удалось удалить карточку');
-      setDeleteDialog({ isOpen: false, cardId: null, cardTitle: '' });
+  const handleDelete = async (e: React.MouseEvent, cardId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // eslint-disable-next-line no-alert
+    if (confirm('Вы уверены, что хотите удалить эту карточку?')) {
+      const result = await dispatch(deleteProductCardThunk(cardId));
+      if (deleteProductCardThunk.fulfilled.match(result)) {
+        void dispatch(fetchProductCardsThunk());
+      }
     }
   };
 
@@ -66,42 +44,30 @@ export default function Dashboard(): React.JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 relative z-10">
-        <div className="flex justify-between items-center mb-8">
-          <Skeleton variant="text" className="h-10 w-48" />
-          <Skeleton variant="rectangular" className="h-10 w-40" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }, (_, i) => (
-            <CardSkeleton key={`skeleton-${String(i)}`} />
-          ))}
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">Загрузка...</div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 relative z-10">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 drop-shadow-sm">Мои карточки</h1>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Мои карточки</h1>
         <Link href="/create-card">
-          <Button variant="default" size="lg">
-            <Plus className="mr-2 h-5 w-5" />
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
             Создать карточку
           </Button>
         </Link>
       </div>
 
       {cards.length === 0 ? (
-        <div className="text-center py-16">
-          <Card className="max-w-md mx-auto p-12">
-            <p className="text-gray-700 mb-6 text-lg">У вас пока нет карточек</p>
-            <Link href="/create-card">
-              <Button variant="default" size="lg">
-                Создать первую карточку
-              </Button>
-            </Link>
-          </Card>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">У вас пока нет карточек</p>
+          <Link href="/create-card">
+            <Button>Создать первую карточку</Button>
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -196,14 +162,6 @@ export default function Dashboard(): React.JSX.Element {
           ))}
         </div>
       )}
-
-      {/* Модальное окно подтверждения удаления */}
-      <DeleteConfirmDialog
-        isOpen={deleteDialog.isOpen}
-        cardTitle={deleteDialog.cardTitle}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

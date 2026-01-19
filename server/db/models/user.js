@@ -17,9 +17,6 @@ module.exports = (sequelize, DataTypes) => {
     role: DataTypes.STRING,
     nsfwConsent: DataTypes.BOOLEAN,
     googleId: DataTypes.STRING,
-    emailVerified: DataTypes.BOOLEAN,
-    verificationToken: DataTypes.STRING,
-    verificationTokenExpires: DataTypes.DATE,
   }, {
     sequelize,
     modelName: 'User',
