@@ -10,6 +10,7 @@ const productCardRouter = require('./routes/productcard.route');
 const productProfileRouter = require('./routes/productprofile.route');
 const templateRouter = require('./routes/template.route');
 const imageRouter = require('./routes/image.route');
+const aiRouter = require('./routes/ai.route')
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -46,6 +47,8 @@ app.use('/api/product-cards', productCardRouter);
 app.use('/api/product-profiles', productProfileRouter);
 app.use('/api/templates', templateRouter);
 app.use('/api/images', imageRouter);
+app.use('/api/ai',aiRouter)
+
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {

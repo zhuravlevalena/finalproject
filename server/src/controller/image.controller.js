@@ -112,7 +112,9 @@ class ImageController {
       return res.status(201).json(image);
     } catch (error) {
       console.error('Error generating image:', error);
-      return res.status(500).json({ error: error.message });
+      // Более понятное сообщение об ошибке для клиента
+      const errorMessage = error.message || 'Не удалось сгенерировать изображение';
+      return res.status(500).json({ error: errorMessage });
     }
   }
 }
