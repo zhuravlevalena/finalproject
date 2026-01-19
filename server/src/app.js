@@ -9,6 +9,7 @@ const marketplaceRouter = require('./routes/marketplace.route');
 const productCardRouter = require('./routes/productcard.route');
 const productProfileRouter = require('./routes/productprofile.route');
 const templateRouter = require('./routes/template.route');
+const layoutRouter = require('./routes/layout.route');
 const imageRouter = require('./routes/image.route');
 const cookieParser = require('cookie-parser');
 
@@ -30,7 +31,7 @@ app.use(
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
-  })
+  }),
 );
 
 // Initialize Passport
@@ -45,12 +46,13 @@ app.use('/api/marketplaces', marketplaceRouter);
 app.use('/api/product-cards', productCardRouter);
 app.use('/api/product-profiles', productProfileRouter);
 app.use('/api/templates', templateRouter);
+app.use('/api/layouts', layoutRouter);
 app.use('/api/images', imageRouter);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.log(err);
-  res.sendStatus(500)
+  res.sendStatus(500);
 });
 
 module.exports = app;

@@ -1,4 +1,4 @@
-const { Template, Marketplace } = require('../../db/models');
+const { Template, Marketplace, Layout } = require('../../db/models');
 
 class TemplateService {
   static async getAllTemplates(marketplaceId = null) {
@@ -6,17 +6,22 @@ class TemplateService {
     return Template.findAll({
       where,
       include: [
-        { model: Marketplace, as: 'marketplace' }
+        { model: Marketplace, as: 'marketplace' },
+        { model: Layout, as: 'layouts' },
       ],
-      order: [['isDefault', 'DESC'], ['name', 'ASC']]
+      order: [
+        ['isDefault', 'DESC'],
+        ['name', 'ASC'],
+      ],
     });
   }
 
   static async getTemplateById(id) {
     return Template.findByPk(id, {
       include: [
-        { model: Marketplace, as: 'marketplace' }
-      ]
+        { model: Marketplace, as: 'marketplace' },
+        { model: Layout, as: 'layouts' },
+      ],
     });
   }
 }
