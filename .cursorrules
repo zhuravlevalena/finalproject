@@ -1,0 +1,43 @@
+## 🎯 ДИЗАЙН И РАЗРАБОТКА
+
+### Всегда используй:
+- shadcn/ui + Tailwind CSS + clsx для стилизации
+- Framer Motion для ВСЕХ hover/scroll анимаций
+- Mobile-first подход с clamp() типографикой
+- Bento grid по умолчанию для layout
+- Solarpunk цветовая палитра (Pantone 2026)
+- Glassmorphism 2.0 (ultra-thin borders + inner glow)
+
+### Стек:
+- React 19 + Vite + TypeScript
+- Framer Motion 12 для анимаций
+- Lucide React для иконок
+- PWA ready (manifest.json + service worker)
+
+### Типографика:
+- Используй CSS переменные для fluid typography
+- --font-size-hero: clamp(2.5rem, 8vw + 1rem, 6rem)
+- Всегда добавляй line-height и letter-spacing
+
+### Цвета:
+- Light: --mocha-50 to --mocha-900
+- Accent: --solarpunk-500 (#22c55e)
+- Dark mode через .dark класс
+
+### Анимации:
+- Всегда useInView для scroll animations
+- Stagger children для списков
+- Reduced motion respect через @media
+
+
+### Bento Grid:
+- Mobile: 1 колонка
+- Tablet: 2 колонки
+- Desktop: 4 колонки (асимметричные)
+- Container queries для адаптивности
+
+### Glassmorphism:
+- .glass-2 класс по умолчанию
+- backdrop-filter: blur(40px) saturate(200%)
+- Ultra-thin borders: 0.5px
+- Inner glow через inset box-shadow

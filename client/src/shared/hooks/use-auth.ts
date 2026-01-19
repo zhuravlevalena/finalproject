@@ -8,7 +8,7 @@ export function useAuth() {
   const dispatch = useAppDispatch();
 
   const login = async (data: LoginForm) => {
-    const result = await dispatch(loginThunk(data));
+      const result = await dispatch(loginThunk(data));
     if (loginThunk.fulfilled.match(result)) {
       return result.payload;
     }
@@ -16,7 +16,7 @@ export function useAuth() {
   };
 
   const register = async (data: RegisterForm) => {
-    const result = await dispatch(registerThunk(data));
+      const result = await dispatch(registerThunk(data));
     if (registerThunk.fulfilled.match(result)) {
       return result.payload;
     }
@@ -24,7 +24,7 @@ export function useAuth() {
   };
 
   const logout = async () => {
-    await dispatch(logoutThunk());
+      await dispatch(logoutThunk());
   };
 
   return {
