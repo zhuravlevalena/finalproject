@@ -46,7 +46,7 @@ export function TemplateSelectorModal({
   if (!isOpen) return null;
 
   const handleContinue = (): void => {
-    setLocation(`/templates?marketplace=${selectedMarketplace}`);
+    setLocation(`/template-selection?marketplace=${selectedMarketplace}`);
     onClose();
   };
 

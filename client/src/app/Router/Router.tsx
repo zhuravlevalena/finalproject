@@ -8,6 +8,9 @@ import CreateCard from '@/pages/create-card/ui/CreateCard';
 import Login from '@/pages/login/ui/LoginPage';
 import Register from '@/pages/register/ui/RegisterPage';
 import AuthCallback from '@/pages/auth-callback/ui/AuthCallback';
+import TemplateSelectionPage from '@/pages/template-selection/ui/TemplateSelectionPage';
+import TemplatesPage from '@/pages/templates/ui/TemplatesPage';
+import LayoutEditorPage from '@/pages/layout-editor/ui/LayoutEditorPage';
 import { useAppDispatch, useAppSelector } from '@/shared/lib/hooks';
 import { refreshThunk } from '@/entities/user/model/user.thunk';
 import EditCard from '@/pages/edit-card/EditCard';
@@ -56,6 +59,9 @@ export default function Router(): React.JSX.Element {
         <Route path="/dashboard">{isLogged ? <Dashboard /> : <Login />}</Route>
         <Route path="/create-card">{isLogged ? <CreateCard /> : <Login />}</Route>
         <Route path="/edit-card/:id">{isLogged ? <EditCard /> : <Login />}</Route>
+        <Route path="/template-selection" component={TemplateSelectionPage} />
+        <Route path="/templates" component={TemplatesPage} />
+        <Route path="/layout-editor/:id">{isLogged ? <LayoutEditorPage /> : <Login />}</Route>
         <Route path="/login">{!isLogged ? <Login /> : null}</Route>
         <Route path="/register">{!isLogged ? <Register /> : null}</Route>
         <Route path="/auth/callback" component={AuthCallback} />
