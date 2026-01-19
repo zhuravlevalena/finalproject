@@ -15,11 +15,8 @@ export const imageService = {
   upload: async (file: File): Promise<Image> => {
     const formData = new FormData();
     formData.append('image', file);
-    const response = await axiosInstance.post<Image>('/images/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // НЕ устанавливаем Content-Type вручную - браузер сделает это автоматически с правильным boundary
+    const response = await axiosInstance.post<Image>('/images/upload', formData);
     return response.data;
   },
 
