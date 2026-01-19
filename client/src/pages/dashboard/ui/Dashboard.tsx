@@ -6,7 +6,7 @@ import {
   deleteProductCardThunk,
 } from '@/entities/productcard/model/productcard.thunk';
 import { DeleteConfirmDialog } from '@/widgets/delete-confirm-dialog/ui/DeleteConfirmDialog';
-import { useToast } from '@/shared/ui/toaster';
+
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
