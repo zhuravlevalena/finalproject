@@ -5,6 +5,9 @@ import {
   fetchProductCardsThunk,
   deleteProductCardThunk,
 } from '@/entities/productcard/model/productcard.thunk';
+import { DeleteConfirmDialog } from '@/widgets/delete-confirm-dialog/ui/DeleteConfirmDialog';
+
+import { Skeleton } from '@/shared/ui/skeleton';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Plus, Eye, Trash2, Edit } from 'lucide-react';
