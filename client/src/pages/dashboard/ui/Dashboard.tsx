@@ -140,7 +140,11 @@ export default function Dashboard(): React.JSX.Element {
                   </div>
                 </div>
               </Card>
+<<<<<<< HEAD
               
+=======
+
+>>>>>>> main
               {/* Кнопка редактирования */}
               <button
                 onClick={(e) => handleEdit(e, card.id)}
@@ -149,7 +153,11 @@ export default function Dashboard(): React.JSX.Element {
               >
                 <Edit className="h-4 w-4" />
               </button>
+<<<<<<< HEAD
               
+=======
+
+>>>>>>> main
               {/* Кнопка удаления */}
               <button
                 onClick={(e) => handleDelete(e, card.id)}
