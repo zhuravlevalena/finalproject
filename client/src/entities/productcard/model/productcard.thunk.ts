@@ -1,10 +1,10 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { productCardService } from '../api/productcard.service';
+import { productCardService, type ProductCardFilters } from '../api/productcard.service';
 import type { ProductCard, CreateProductCardDto } from './productcard.types';
 
 export const fetchProductCardsThunk = createAsyncThunk(
   'productCard/fetchAll',
-  async (): Promise<ProductCard[]> => productCardService.getAll()
+  async (filters?: ProductCardFilters): Promise<ProductCard[]> => productCardService.getAll(filters)
 );
 
 export const fetchProductCardByIdThunk = createAsyncThunk(

@@ -1,4 +1,4 @@
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { useAuth } from '@/shared/hooks/use-auth';
 import { Button } from '@/shared/ui/button';
 import { LogoutButton } from '@/features/auth/logout/ui/LogoutButton';
@@ -10,12 +10,11 @@ export function Navbar(): React.JSX.Element {
   return (
     <nav className="border-b border-border bg-card">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <button
-          onClick={() => setLocation('/')}
-          className="text-2xl font-bold text-primary cursor-pointer hover:opacity-80 transition-opacity"
-        >
-          AI-Ассистент
-        </button>
+        <Link href="/">
+          <span className="text-2xl font-bold text-primary cursor-pointer hover:opacity-80 transition-opacity">
+            AI-Ассистент
+          </span>
+        </Link>
 
         <div className="flex gap-4 items-center">
           {user ? (

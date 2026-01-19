@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '@/shared/hooks/use-auth';
 import { Button } from '@/shared/ui/button';
 import { Card, CardContent } from '@/shared/ui/card';
@@ -66,12 +66,6 @@ const exampleCards = [
 export default function Home(): React.JSX.Element {
   const { user, isLoading: isAuthLoading } = useAuth();
   const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (user && !isAuthLoading) {
-      setLocation('/dashboard');
-    }
-  }, [user, isAuthLoading, setLocation]);
 
   if (isAuthLoading) {
     return (
@@ -144,5 +138,57 @@ export default function Home(): React.JSX.Element {
     );
   }
 
-  return null;
+  // Контент для зарегистрированных пользователей
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <section className="container mx-auto px-4 py-20 text-center">
+        <h2 className="text-4xl md:text-5xl font-bold mb-4">
+          Добро пожаловать, {user.name}!
+        </h2>
+        <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          Создавайте привлекательные карточки товаров для маркетплейсов за минуты
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Button size="lg" onClick={() => setLocation('/dashboard')}>
+            <Sparkles className="mr-2 h-5 w-5" />
+            Мои карточки
+          </Button>
+          <Button size="lg" variant="outline" onClick={() => setLocation('/create-card')}>
+            Создать новую карточку
+          </Button>
+        </div>
+      </section>
+
+      {/* Examples Section */}
+      <section id="examples" className="container mx-auto px-4 py-16">
+        <h3 className="text-3xl font-bold text-center mb-12">
+          Примеры карточек товаров
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {exampleCards.map((card) => (
+            <Card key={card.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="p-6">
+                <div className="text-6xl text-center mb-4">{card.image}</div>
+                <div className="mb-2">
+                  <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                    {card.marketplace}
+                  </span>
+                </div>
+                <h4 className="text-lg font-semibold mb-2">{card.title}</h4>
+                <p className="text-sm text-muted-foreground mb-4">{card.description}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xl font-bold">{card.price}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-medium">{card.rating}</span>
+                    <span className="text-yellow-500">⭐</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 }

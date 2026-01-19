@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { fabric } from 'fabric';
+import { cardVersionService } from '@/entities/cardversion/api/cardversion.service';
+import { useDebounce } from '@/shared/hooks/use-debounce';
+import { useToast } from '@/shared/ui/toaster';
+import { Progress } from '@/shared/ui/progress';
 import {
   Type,
   Image as ImageIcon,
@@ -33,8 +37,10 @@ type CardEditorProps = {
   cardSize: string;
   slideCount: number;
   card?: {
+    id?: number;
     canvasData?: Record<string, unknown>;
   };
+  autoSaveEnabled?: boolean;
 };
 
 export function CardEditor({
@@ -44,6 +50,8 @@ export function CardEditor({
   cardSize,
   slideCount,
   card,
+  autoSaveEnabled = true,
+  versionToLoad,
 }: CardEditorProps): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
@@ -54,6 +62,11 @@ export function CardEditor({
   });
   const [zoom, setZoom] = useState(100);
   const [isLoading, setIsLoading] = useState(false);
+  const [canvasData, setCanvasData] = useState<Record<string, unknown> | null>(null);
+  const lastSavedDataRef = useRef<string>('');
+  const [exportProgress, setExportProgress] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const { success, error: showError, info } = useToast();
 
   // Текстовые свойства для панели редактирования
   const [textProps, setTextProps] = useState({
@@ -117,11 +130,12 @@ export function CardEditor({
     });
 
     // Загружаем сохраненные данные, если есть
-    if (card?.canvasData) {
+    const dataToLoad = versionToLoad?.canvasData || card?.canvasData;
+    if (dataToLoad) {
       try {
-        const canvasData = typeof card.canvasData === 'string' 
-          ? JSON.parse(card.canvasData) 
-          : card.canvasData;
+        const canvasData = typeof dataToLoad === 'string' 
+          ? JSON.parse(dataToLoad) 
+          : dataToLoad;
         canvas.loadFromJSON(canvasData, () => {
           canvas.renderAll();
           saveHistory();
@@ -160,7 +174,7 @@ export function CardEditor({
       canvas.dispose();
       fabricCanvasRef.current = null;
     };
-  }, [cardSize, saveHistory, updateSelectedObject]);
+  }, [cardSize, saveHistory, updateSelectedObject, versionToLoad, card?.canvasData]);
 
   // Установка фона
   useEffect(() => {
@@ -184,6 +198,50 @@ export function CardEditor({
       { crossOrigin: 'anonymous' },
     );
   }, [backgroundImage, saveHistory]);
+
+  // Загрузка версии при изменении versionToLoad
+  useEffect(() => {
+    if (!fabricCanvasRef.current || !versionToLoad?.canvasData) return;
+
+    try {
+      const canvasData = typeof versionToLoad.canvasData === 'string'
+        ? JSON.parse(versionToLoad.canvasData)
+        : versionToLoad.canvasData;
+      
+      fabricCanvasRef.current.loadFromJSON(canvasData, () => {
+        fabricCanvasRef.current?.renderAll();
+        saveHistory();
+        setCanvasData(canvasData);
+      });
+    } catch (err) {
+      console.error('Error loading version:', err);
+    }
+  }, [versionToLoad, saveHistory]);
+
+  // Автосохранение версий
+  const debouncedCanvasData = useDebounce(canvasData, 3000);
+
+  useEffect(() => {
+    if (!card?.id || !debouncedCanvasData || !autoSaveEnabled) return;
+
+    const dataString = JSON.stringify(debouncedCanvasData);
+    
+    // Проверяем, изменились ли данные
+    if (dataString === lastSavedDataRef.current) return;
+
+    const handleAutoSave = async () => {
+      try {
+        await cardVersionService.autoSave(card.id, debouncedCanvasData);
+        lastSavedDataRef.current = dataString;
+        info('Черновик сохранен', 2000);
+      } catch (err) {
+        console.error('Ошибка автосохранения:', err);
+      }
+    };
+
+    handleAutoSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedCanvasData, card?.id, autoSaveEnabled]);
 
   // Добавление основного изображения
   useEffect(() => {
@@ -352,17 +410,55 @@ export function CardEditor({
     updateTextProperty('fontSize', newSize);
   };
 
-  // Экспорт
-  const handleExport = () => {
+  // Экспорт с прогресс-баром
+  const handleExport = async () => {
     if (!fabricCanvasRef.current) return;
-    const dataURL = fabricCanvasRef.current.toDataURL({
-      format: 'png',
-      quality: 1,
-    });
-    const link = document.createElement('a');
-    link.download = `card-${Date.now()}.png`;
-    link.href = dataURL;
-    link.click();
+    
+    setIsExporting(true);
+    setExportProgress(0);
+    
+    try {
+      // Этап 1: Подготовка canvas (0-30%)
+      setExportProgress(10);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      setExportProgress(30);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Этап 2: Генерация изображения (30-70%)
+      setExportProgress(50);
+      const dataURL = fabricCanvasRef.current.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 2,
+      });
+      
+      setExportProgress(70);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Этап 3: Сохранение файла (70-100%)
+      setExportProgress(85);
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = `card-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setExportProgress(100);
+      success('Карточка успешно экспортирована');
+      
+      // Скрываем прогресс-бар через 500ms
+      setTimeout(() => {
+        setIsExporting(false);
+        setExportProgress(0);
+      }, 500);
+    } catch (err) {
+      console.error('Ошибка при экспорте:', err);
+      showError('Ошибка при экспорте карточки');
+      setIsExporting(false);
+      setExportProgress(0);
+    }
   };
 
   // Сохранение
@@ -482,13 +578,27 @@ export function CardEditor({
             <Save className="h-4 w-4" />
             <span className="hidden sm:inline text-sm">{isLoading ? 'Сохранение...' : 'Сохранить'}</span>
           </button>
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline text-sm">Скачать</span>
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline text-sm">
+                {isExporting ? 'Экспорт...' : 'Скачать'}
+              </span>
+            </button>
+            {isExporting && (
+              <div className="w-full min-w-[200px]">
+                <Progress 
+                  value={exportProgress} 
+                  showLabel 
+                  label="Экспорт карточки"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

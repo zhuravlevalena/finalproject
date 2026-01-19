@@ -10,6 +10,7 @@ const productCardRouter = require('./routes/productcard.route');
 const productProfileRouter = require('./routes/productprofile.route');
 const templateRouter = require('./routes/template.route');
 const imageRouter = require('./routes/image.route');
+const cardVersionRouter = require('./routes/card-version.route');
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/product-cards', productCardRouter);
 app.use('/api/product-profiles', productProfileRouter);
 app.use('/api/templates', templateRouter);
 app.use('/api/images', imageRouter);
+app.use('/api/card-versions', cardVersionRouter);
 
 
 app.use((err, req, res, next) => {
