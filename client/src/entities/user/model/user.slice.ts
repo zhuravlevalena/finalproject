@@ -14,8 +14,10 @@ const userSlice = createSlice({
     extraReducers: (builder) => {
         // Registration
     builder
-      .addCase(registerThunk.fulfilled, (state, action) => {
-        state.user = action.payload;
+      .addCase(registerThunk.fulfilled, (state) => {
+        // При регистрации с подтверждением по коду, пользователь НЕ сохраняется в Redux
+        // Пользователь будет сохранен только после подтверждения email
+        state.user = null;
         state.loading = false;
       })
       .addCase(registerThunk.pending, (state) => {
@@ -35,8 +37,10 @@ const userSlice = createSlice({
       .addCase(refreshThunk.pending, (state) => {
         state.loading = true;
       })
-      .addCase(refreshThunk.rejected, (state, action) => {
-        console.error(action.error);
+      .addCase(refreshThunk.rejected, (state) => {
+        // Тихая обработка - если refresh не удался (нет токена), просто не обновляем пользователя
+        // Это нормальное поведение для неавторизованных пользователей
+        state.user = null;
         state.loading = false;
       })
 
@@ -66,8 +70,6 @@ const userSlice = createSlice({
         console.error(action.error);
         state.loading = false;
       });
-
-
 
     },
 });

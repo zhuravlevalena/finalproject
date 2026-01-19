@@ -1,9 +1,39 @@
 const { ProductCard, User, Marketplace, Template, ProductProfile, Image } = require('../../db/models');
+const { Op } = require('sequelize');
+const CardVersionService = require('./card-version.service');
 
 class ProductCardService {
-  static async getAllCards(userId) {
+  static async getAllCards(userId, filters = {}) {
+    const {
+      search,
+      marketplaceId,
+      status,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC'
+    } = filters;
+
+    const where = { userId };
+
+    // Поиск по названию или описанию
+    if (search && search.trim()) {
+      where[Op.or] = [
+        { title: { [Op.iLike]: `%${search.trim()}%` } },
+        { description: { [Op.iLike]: `%${search.trim()}%` } }
+      ];
+    }
+
+    // Фильтр по маркетплейсу
+    if (marketplaceId) {
+      where.marketplaceId = marketplaceId;
+    }
+
+    // Фильтр по статусу
+    if (status) {
+      where.status = status;
+    }
+
     return ProductCard.findAll({
-      where: { userId },
+      where,
       include: [
         { model: Marketplace, as: 'marketplace' },
         { model: Template, as: 'template' },
@@ -11,7 +41,7 @@ class ProductCardService {
         { model: Image, as: 'image' },
         { model: Image, as: 'generatedImage' }
       ],
-      order: [['createdAt', 'DESC']]
+      order: [[sortBy, sortOrder]]
     });
   }
 
@@ -37,7 +67,30 @@ class ProductCardService {
     if (!card) {
       return null;
     }
-    return card.update(data);
+
+    // Сохраняем старые данные для сравнения
+    const oldCanvasData = card.canvasData;
+
+    // Обновляем карточку
+    const updatedCard = await card.update(data);
+
+    // Создаем версию, если canvasData изменился
+    if (data.canvasData && 
+        JSON.stringify(oldCanvasData) !== JSON.stringify(data.canvasData)) {
+      try {
+        await CardVersionService.createVersion(id, {
+          canvasData: data.canvasData,
+          title: data.title,
+          description: data.description,
+          changeDescription: 'Ручное сохранение',
+        }, userId);
+      } catch (error) {
+        // Логируем ошибку, но не прерываем обновление карточки
+        console.error('Error creating version:', error);
+      }
+    }
+
+    return updatedCard;
   }
 
   static async deleteCard(id, userId) {

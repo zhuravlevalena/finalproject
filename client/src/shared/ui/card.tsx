@@ -1,14 +1,18 @@
 import React from 'react';
 import { cn } from '@/shared/lib/utils';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+type CardProps = {
   children: React.ReactNode;
-}
+  className?: string;
+} & React.HTMLAttributes<HTMLDivElement>
 
 export function Card({ className, children, ...props }: CardProps) {
   return (
     <div
-      className={cn('rounded-lg border border-border bg-card text-card-foreground shadow-sm', className)}
+      className={cn(
+        'rounded-lg border bg-card text-card-foreground shadow-sm',
+        className
+      )}
       {...props}
     >
       {children}
@@ -32,6 +36,14 @@ export function CardTitle({ className, children, ...props }: CardProps) {
   );
 }
 
+export function CardDescription({ className, children, ...props }: CardProps) {
+  return (
+    <p className={cn('text-sm text-muted-foreground', className)} {...props}>
+      {children}
+    </p>
+  );
+}
+
 export function CardContent({ className, children, ...props }: CardProps) {
   return (
     <div className={cn('p-6 pt-0', className)} {...props}>
@@ -40,3 +52,10 @@ export function CardContent({ className, children, ...props }: CardProps) {
   );
 }
 
+export function CardFooter({ className, children, ...props }: CardProps) {
+  return (
+    <div className={cn('flex items-center p-6 pt-0', className)} {...props}>
+      {children}
+    </div>
+  );
+}
