@@ -123,7 +123,7 @@ export default function CreateCard(): React.JSX.Element {
     if (createProductCardThunk.fulfilled.match(result)) {
       // Небольшая задержка для обновления списка карточек
       setTimeout(() => {
-        setLocation('/dashboard');
+      setLocation('/dashboard');
       }, 100);
     }
   };
