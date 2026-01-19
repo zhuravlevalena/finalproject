@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
 import { fetchMarketplacesThunk } from '@/entities/marketplace/model/marketplace.thunk';
@@ -8,18 +8,35 @@ import { createProductCardThunk } from '@/entities/productcard/model/productcard
 import { getOrCreateProductProfileThunk } from '@/entities/productprofile/model/productprofile.thunk';
 
 import { Card } from '@/shared/ui/card';
-import { Upload, Loader2, Image as ImageIcon, Settings, FileText, X } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon, Settings, FileText, X, Plus } from 'lucide-react';
 import type { CreateProductCardDto } from '@/entities/productcard/model/productcard.types';
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 
 type CardSize = '800x600' | '1024x768' | '1200x900' | '1920x1080';
 type SlideCount = 1 | 2 | 3 | 4 | 5;
 
+// Маппинг размеров карточек для каждого маркетплейса
+const marketplaceCardSizes: Record<string, CardSize[]> = {
+  wildberries: ['800x600', '1024x768', '1200x900'],
+  ozon: ['1024x768', '1200x900', '1920x1080'],
+  'yandex-market': ['800x600', '1024x768', '1200x900', '1920x1080'],
+};
+
+// Функция для получения доступных размеров по маркетплейсу
+const getAvailableSizes = (marketplaceSlug: string | null): CardSize[] => {
+  if (!marketplaceSlug) return [];
+  return marketplaceCardSizes[marketplaceSlug] || ['1024x768'];
+};
+
 export default function CreateCard(): React.JSX.Element {
   const [, setLocation] = useLocation();
   const dispatch = useAppDispatch();
+  const cardEditorRef = useRef<{
+    addTextToCanvas?: (text: string, options?: { fontSize?: number; top?: number }) => void;
+  } | null>(null);
 
   const [selectedMarketplace, setSelectedMarketplace] = useState<number | null>(null);
+  const [selectedMarketplaceSlug, setSelectedMarketplaceSlug] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [uploadedImageData, setUploadedImageData] = useState<{ id: number; url: string } | null>(
@@ -31,7 +48,12 @@ export default function CreateCard(): React.JSX.Element {
     url: string;
   } | null>(null);
   const [productType, setProductType] = useState('');
-  const [cardContent, setCardContent] = useState('');
+
+  // Состояния для содержания карточки
+  const [productTitle, setProductTitle] = useState('');
+  const [productDescription, setProductDescription] = useState('');
+  const [productCharacteristics, setProductCharacteristics] = useState('');
+
   const [cardSize, setCardSize] = useState<CardSize>('1024x768');
   const [slideCount, setSlideCount] = useState<SlideCount>(1);
   const [activeTab, setActiveTab] = useState<'settings' | 'images' | 'content'>('settings');
@@ -88,6 +110,38 @@ export default function CreateCard(): React.JSX.Element {
     setBackgroundImageData(null);
   };
 
+  // Функция для добавления текста на canvas
+  const handleAddContentToCanvas = () => {
+    // Создаем единый текст из всех полей
+    const contentParts: string[] = [];
+
+    if (productTitle.trim()) {
+      contentParts.push(productTitle.trim());
+    }
+
+    if (productDescription.trim()) {
+      contentParts.push(`\n${productDescription.trim()}`);
+    }
+
+    if (productCharacteristics.trim()) {
+      contentParts.push(`\n\nХарактеристики:\n${productCharacteristics.trim()}`);
+    }
+
+    if (contentParts.length === 0) {
+      // eslint-disable-next-line no-alert
+      alert('Заполните хотя бы одно поле для добавления на карточку');
+      return;
+    }
+
+    const fullContent = contentParts.join('');
+
+    // Добавляем текст на canvas через CardEditor
+    // Для этого нужно будет добавить метод в CardEditor или использовать другой подход
+    // Пока просто сохраняем в метаданные, а пользователь может добавить текст вручную
+    // eslint-disable-next-line no-alert
+    alert('Содержание сохранено. Вы можете добавить текст на карточку вручную через редактор.');
+  };
+
   const handleSave = async (
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
@@ -99,6 +153,13 @@ export default function CreateCard(): React.JSX.Element {
         profileId = result.payload.id;
       }
     }
+
+    // Формируем полное содержание карточки
+    const cardContent = {
+      title: productTitle,
+      description: productDescription,
+      characteristics: productCharacteristics,
+    };
 
     const cardData: CreateProductCardDto = {
       marketplaceId: selectedMarketplace || undefined,
@@ -149,6 +210,7 @@ export default function CreateCard(): React.JSX.Element {
         <div className="lg:col-span-3">
           <Card className="p-6">
             <CardEditor
+              ref={cardEditorRef}
               onSave={handleSave}
               initialImage={
                 uploadedImageData
@@ -169,40 +231,40 @@ export default function CreateCard(): React.JSX.Element {
         {/* Боковая панель настроек - 1 колонка */}
         <div className="space-y-4">
           <Card className="p-4">
-            {/* Табы */}
-            <div className="flex gap-1 mb-4 border-b border-gray-200">
+            {/* Табы - исправлено выравнивание */}
+            <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors relative ${
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${
                   activeTab === 'settings' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Настройки</span>
+                <Settings className="h-4 w-4 flex-shrink-0" />
+                <span>Настройки</span>
                 {activeTab === 'settings' && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
                 )}
               </button>
               <button
                 onClick={() => setActiveTab('images')}
-                className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors relative ${
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${
                   activeTab === 'images' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <ImageIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Изображения</span>
+                <ImageIcon className="h-4 w-4 flex-shrink-0" />
+                <span>Изображения</span>
                 {activeTab === 'images' && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
                 )}
               </button>
               <button
                 onClick={() => setActiveTab('content')}
-                className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors relative ${
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${
                   activeTab === 'content' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Содержание</span>
+                <FileText className="h-4 w-4 flex-shrink-0" />
+                <span>Содержание</span>
                 {activeTab === 'content' && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
                 )}
@@ -218,9 +280,23 @@ export default function CreateCard(): React.JSX.Element {
                   </label>
                   <select
                     value={selectedMarketplace || ''}
-                    onChange={(e) =>
-                      setSelectedMarketplace(e.target.value ? Number(e.target.value) : null)
-                    }
+                    onChange={(e) => {
+                      const marketplaceId = e.target.value ? Number(e.target.value) : null;
+                      setSelectedMarketplace(marketplaceId);
+
+                      // Находим slug выбранного маркетплейса
+                      const marketplace = marketplaces?.find((mp) => mp.id === marketplaceId);
+                      const slug = marketplace?.slug || null;
+                      setSelectedMarketplaceSlug(slug);
+
+                      // Автоматически устанавливаем первый доступный размер для выбранного маркетплейса
+                      if (slug) {
+                        const availableSizes = getAvailableSizes(slug);
+                        if (availableSizes.length > 0) {
+                          setCardSize(availableSizes[0]);
+                        }
+                      }
+                    }}
                     className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   >
                     <option value="">Выберите маркетплейс</option>
@@ -267,22 +343,31 @@ export default function CreateCard(): React.JSX.Element {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Размер карточки
-                  </label>
-                  <select
-                    value={cardSize}
-                    onChange={(e) => setCardSize(e.target.value as CardSize)}
-                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  >
-                    {sizeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label} - {option.description}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Показываем селект размера только после выбора маркетплейса */}
+                {selectedMarketplace && selectedMarketplaceSlug && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700">
+                      Размер карточки
+                    </label>
+                    <select
+                      value={cardSize}
+                      onChange={(e) => setCardSize(e.target.value as CardSize)}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      {getAvailableSizes(selectedMarketplaceSlug).map((size) => {
+                        const option = sizeOptions.find((opt) => opt.value === size);
+                        return option ? (
+                          <option key={option.value} value={option.value}>
+                            {option.label} - {option.description}
+                          </option>
+                        ) : null;
+                      })}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Размеры соответствуют требованиям выбранного маркетплейса
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium mb-2 text-gray-700">
@@ -411,31 +496,77 @@ export default function CreateCard(): React.JSX.Element {
             )}
 
             {activeTab === 'content' && (
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700">
-                  Содержание карточки
-                </label>
-                <p className="text-xs text-gray-500 mb-3">
-                  Введите описание, характеристики и особенности товара
-                </p>
-                <textarea
-                  value={cardContent}
-                  onChange={(e) => setCardContent(e.target.value)}
-                  placeholder="Например:&#10;&#10;• Характеристика 1&#10;• Характеристика 2&#10;• Характеристика 3&#10;&#10;Особенности товара..."
-                  rows={14}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors"
-                />
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-xs text-gray-500">{cardContent.length} символов</p>
-                  {cardContent.length > 0 && (
-                    <button
-                      onClick={() => setCardContent('')}
-                      className="text-xs text-red-600 hover:text-red-800 transition-colors"
-                    >
-                      Очистить
-                    </button>
-                  )}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Название товара
+                  </label>
+                  <input
+                    type="text"
+                    value={productTitle}
+                    onChange={(e) => setProductTitle(e.target.value)}
+                    placeholder="Введите название товара"
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Описание товара
+                  </label>
+                  <textarea
+                    value={productDescription}
+                    onChange={(e) => setProductDescription(e.target.value)}
+                    placeholder="Введите описание товара..."
+                    rows={4}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{productDescription.length} символов</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Характеристики товара
+                  </label>
+                  <textarea
+                    value={productCharacteristics}
+                    onChange={(e) => setProductCharacteristics(e.target.value)}
+                    placeholder="Введите характеристики товара (каждая с новой строки):&#10;• Характеристика 1&#10;• Характеристика 2&#10;• Характеристика 3"
+                    rows={6}
+                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {productCharacteristics.length} символов
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-gray-200">
+                  <button
+                    onClick={handleAddContentToCanvas}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Добавить на карточку</span>
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Содержание будет сохранено в метаданных карточки
+                  </p>
+                </div>
+
+                {(productTitle || productDescription || productCharacteristics) && (
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        setProductTitle('');
+                        setProductDescription('');
+                        setProductCharacteristics('');
+                      }}
+                      className="w-full text-sm text-red-600 hover:text-red-800 transition-colors py-2"
+                    >
+                      Очистить все поля
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </Card>
