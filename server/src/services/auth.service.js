@@ -28,6 +28,12 @@ class AuthService {
     if (!user) {
       throw new Error('Invalid email or password');
     }
+    
+    // Проверяем, что у пользователя есть пароль (не зарегистрирован через Google)
+    if (!user.hashpass) {
+      throw new Error('This account is registered with Google. Please use Google sign-in.');
+    }
+    
     const valid = await bcrypt.compare(password, user.hashpass);
     if (!valid) {
       throw new Error('Invalid email or password');

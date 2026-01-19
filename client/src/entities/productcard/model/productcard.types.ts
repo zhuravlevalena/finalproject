@@ -1,11 +1,12 @@
+import type { z } from 'zod';
+import type { cardStatusSchema, createProductCardSchema } from './productcard.schemas';
 import type { Marketplace } from '@/entities/marketplace/model/marketplace.types';
 import type { Template } from '@/entities/template/model/template.types';
 import type { ProductProfile } from '@/entities/productprofile/model/productprofile.types';
-import type { Image } from '@/entities/image/model/image.types';
+import type { Image } from 'fabric/fabric-impl';
 
-export type CardStatus = 'draft' | 'completed';
-
-export interface ProductCard {
+export type CardStatus = z.infer<typeof cardStatusSchema>;
+export type ProductCard = {
   id: number;
   userId: number;
   marketplaceId?: number;
@@ -16,24 +17,21 @@ export interface ProductCard {
   productProfile?: ProductProfile;
   title?: string;
   description?: string;
-  canvasData?: Record<string, unknown>;
+  canvasData?: Record<string, unknown>; // Теперь только метаданные
   imageId?: number;
   image?: Image;
   generatedImageId?: number;
-  generatedImage?: Image;
+  generatedImage?: Image; // Готовое изображение карточки
   status: CardStatus;
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export interface CreateProductCardDto {
-  marketplaceId?: number;
-  templateId?: number;
-  productProfileId?: number;
-  title?: string;
-  description?: string;
-  canvasData?: Record<string, unknown>;
-  imageId?: number;
-  generatedImageId?: number;
-  status?: CardStatus;
-}
+export type CreateProductCardDto = z.infer<typeof createProductCardSchema>;
+
+export type ProductCardState = {
+  cards: ProductCard[];
+  loading: boolean;
+  error: string | null;
+  creating: boolean;
+};

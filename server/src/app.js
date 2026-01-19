@@ -1,6 +1,8 @@
 const express = require('express');
 const morgan = require('morgan');
 const path = require('path');
+const session = require('express-session');
+const passport = require('./config/passport.config');
 
 const authRouter = require('./routes/auth.route');
 const marketplaceRouter = require('./routes/marketplace.route');
@@ -16,6 +18,24 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+// Session configuration for Passport
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Статические файлы для загруженных изображений
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

@@ -1,8 +1,10 @@
-export interface Marketplace {
-  id: number;
-  name: string;
-  slug: string;
-  requirements?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { z } from 'zod';
+import type { marketplaceSchema } from './marketplace.schemas';
+
+export type Marketplace = z.infer<typeof marketplaceSchema>;
+
+export type MarketplaceState = {
+  marketplaces: Marketplace[];
+  loading: boolean;
+  error: string | null;
+};

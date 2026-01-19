@@ -1,44 +1,40 @@
-import React from 'react';
-import { useMutation } from '@tanstack/react-query';
 import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
 import { loginThunk, registerThunk, logoutThunk } from '@/entities/user/model/user.thunk';
+import type { LoginForm, RegisterForm } from '@/entities/user/model/user.types';
 
-
-export function useAuth(): React.JSX.Element  {
+export function useAuth() {
   const user = useAppSelector((state) => state.user.user);
   const isLoading = useAppSelector((state) => state.user.loading);
   const dispatch = useAppDispatch();
 
-  const loginMutation = useMutation({
-    mutationFn: async (data: { email: string; password: string }) => {
-      const result = await dispatch(loginThunk(data));
+  const login = async (data: LoginForm) => {
+    const result = await dispatch(loginThunk(data));
+    if (loginThunk.fulfilled.match(result)) {
       return result.payload;
-    },
-  });
+    }
+    throw result.error;
+  };
 
-  const registerMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string; password: string }) => {
-      const result = await dispatch(registerThunk(data));
+  const register = async (data: RegisterForm) => {
+    const result = await dispatch(registerThunk(data));
+    if (registerThunk.fulfilled.match(result)) {
       return result.payload;
-    },
-  });
+    }
+    throw result.error;
+  };
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      await dispatch(logoutThunk());
-    },
-  });
+  const logout = async () => {
+    await dispatch(logoutThunk());
+  };
 
   return {
     user,
     isLoading,
-    login: loginMutation.mutateAsync,
-    register: registerMutation.mutateAsync,
-    logout: async () => {
-      await logoutMutation.mutateAsync();
-    },
-    isLoggingIn: loginMutation.isPending,
-    isRegistering: registerMutation.isPending,
+    login,
+    register,
+    logout,
+    isLoggingIn: isLoading,
+    isRegistering: isLoading,
   };
 }
 

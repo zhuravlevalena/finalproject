@@ -75,6 +75,38 @@ class AuthController {
       return res.status(401).json({ error: error.message || 'Invalid email or password' });
     }
   };
+
+  static googleAuth = (req, res, next) => {
+    const passport = require('../config/passport.config');
+    passport.authenticate('google', {
+      scope: ['profile', 'email'],
+    })(req, res, next);
+  };
+
+  static googleCallback = async (req, res, next) => {
+    const passport = require('../config/passport.config');
+    passport.authenticate('google', async (err, user) => {
+      if (err) {
+        return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=${encodeURIComponent(err.message)}`);
+      }
+
+      if (!user) {
+        return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=Authentication failed`);
+      }
+
+      try {
+        const { accessToken, refreshToken } = generateTokens({ user });
+
+        // Устанавливаем токены в cookie и редиректим на клиент
+        res
+          .cookie('refreshToken', refreshToken, cookieConfig.refresh)
+          .redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/auth/callback?token=${accessToken}`);
+      } catch (error) {
+        console.error('Error generating tokens:', error);
+        res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5173'}/login?error=Token generation failed`);
+      }
+    })(req, res, next);
+  };
 }
 
 module.exports = AuthController;
