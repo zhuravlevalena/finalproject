@@ -6,57 +6,61 @@ type Template = {
   name: string;
   preview: string;
   marketplace: string;
-  format: string;
-}
+};
 
 // Моковые данные для демонстрации
 const mockTemplates: Template[] = [
   {
     id: '1',
     name: 'Минималистичный',
-    preview: 'https://via.placeholder.com/400x400/4F46E5/FFFFFF?text=Template+1',
+    preview: 'https://via.placeholder.com/600x800/4F46E5/FFFFFF?text=Template+1',
     marketplace: 'ozon',
-    format: 'square',
   },
   {
     id: '2',
     name: 'Яркий акцент',
-    preview: 'https://via.placeholder.com/400x400/EC4899/FFFFFF?text=Template+2',
+    preview: 'https://via.placeholder.com/600x800/EC4899/FFFFFF?text=Template+2',
     marketplace: 'ozon',
-    format: 'square',
   },
   {
     id: '3',
     name: 'Премиум',
-    preview: 'https://via.placeholder.com/400x400/10B981/FFFFFF?text=Template+3',
+    preview: 'https://via.placeholder.com/600x800/10B981/FFFFFF?text=Template+3',
     marketplace: 'ozon',
-    format: 'square',
   },
   {
     id: '4',
     name: 'Современный',
-    preview: 'https://via.placeholder.com/400x267/F59E0B/FFFFFF?text=Template+4',
-    marketplace: 'ozon',
-    format: 'horizontal',
+    preview: 'https://via.placeholder.com/600x800/F59E0B/FFFFFF?text=Template+4',
+    marketplace: 'wildberries',
+  },
+  {
+    id: '5',
+    name: 'Элегантный',
+    preview: 'https://via.placeholder.com/600x800/8B5CF6/FFFFFF?text=Template+5',
+    marketplace: 'wildberries',
+  },
+  {
+    id: '6',
+    name: 'Классический',
+    preview: 'https://via.placeholder.com/600x800/06B6D4/FFFFFF?text=Template+6',
+    marketplace: 'yandex',
   },
 ];
 
 export default function TemplatesPage(): React.JSX.Element {
   const [, setLocation] = useLocation();
-  const [searchParams, setSearchParams] = useState({ marketplace: '', format: '' });
+  const [marketplace, setMarketplace] = useState('');
   const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([]);
 
   useEffect(() => {
     // Парсим query параметры
     const params = new URLSearchParams(window.location.search);
-    const marketplace = params.get('marketplace') ?? '';
-    const format = params.get('format') ?? '';
-    setSearchParams({ marketplace, format });
+    const marketplaceParam = params.get('marketplace') ?? '';
+    setMarketplace(marketplaceParam);
 
     // Фильтруем шаблоны
-    const filtered = mockTemplates.filter(
-      (t) => t.marketplace === marketplace && t.format === format,
-    );
+    const filtered = mockTemplates.filter((t) => t.marketplace === marketplaceParam);
     setFilteredTemplates(filtered);
   }, []);
 
@@ -86,8 +90,7 @@ export default function TemplatesPage(): React.JSX.Element {
         </button>
         <h1 className="text-3xl font-bold text-gray-900">Выберите шаблон</h1>
         <p className="text-gray-600 mt-2">
-          Маркетплейс: <span className="font-semibold">{searchParams.marketplace}</span> | Формат:{' '}
-          <span className="font-semibold">{searchParams.format}</span>
+          Маркетплейс: <span className="font-semibold capitalize">{marketplace}</span>
         </p>
       </div>
 
@@ -100,7 +103,7 @@ export default function TemplatesPage(): React.JSX.Element {
               className="border-2 border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group"
               onClick={() => handleTemplateSelect(template.id)}
             >
-              <div className="aspect-square bg-gray-100 overflow-hidden">
+              <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
                 <img
                   src={template.preview}
                   alt={template.name}
