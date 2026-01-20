@@ -50,7 +50,6 @@ export default function Dashboard(): React.JSX.Element {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => {
-            // Извлекаем данные о слайдах из canvasData.meta
             const canvasData = card.canvasData as
               | {
                   meta?: {
@@ -67,9 +66,9 @@ export default function Dashboard(): React.JSX.Element {
               | null
               | undefined;
             const meta = canvasData?.meta;
-            const slides = meta?.slides || [];
-            const slideCount = meta?.slideCount || 1;
-            const cardSize = meta?.cardSize || '1024x768';
+            const slides = meta?.slides ?? [];
+            const slideCount = meta?.slideCount ?? 1;
+            const cardSize = meta?.cardSize ?? '1024x768';
 
             return (
               <CardSlideViewer

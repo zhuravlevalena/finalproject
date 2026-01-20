@@ -37,7 +37,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
   }, []);
 
   const handleTemplateSelect = (templateId: number): void => {
-    setLocation(`/templates?templateId=${templateId}`);
+    setLocation(`/templates?templateId=${String(templateId)}`);
   };
 
   if (loading) {
@@ -124,7 +124,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                     <p className="text-sm text-gray-600 mt-1">{template.description}</p>
                   )}
                   <p className="text-xs text-gray-500 mt-2">
-                    {template.layouts?.length || 0} макетов
+                    {(template as unknown as { layouts?: unknown[] }).layouts?.length ?? 0} макетов
                   </p>
                 </div>
                 <svg
