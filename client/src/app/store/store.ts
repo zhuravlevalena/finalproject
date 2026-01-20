@@ -5,6 +5,7 @@ import templateReducer from '@/entities/template/model/template.slice';
 import imageReducer from '@/entities/image/model/image.slice';
 import productCardReducer from '@/entities/productcard/model/productcard.slice';
 import productProfileReducer from '@/entities/productprofile/model/productprofile.slice';
+import editorReducer from '@/features/editor/model/editorSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     image: imageReducer,
     productCard: productCardReducer,
     productProfile: productProfileReducer,
+    editor: editorReducer,
   },
 });
 
