@@ -340,17 +340,42 @@ export default function CreateCard(): React.JSX.Element {
               </motion.div>
             )}
 
-            <CardEditor
-              key={`slide-${currentSlideIndex}-${cardSize}`}
-              ref={cardEditorRef}
-              onSave={handleSave}
-              initialImage={currentSlide.uploadedImage || undefined}
-              backgroundImage={currentSlide.backgroundImage || undefined}
-              cardSize={cardSize}
-              slideCount={slideCount}
-              card={currentSlide.canvasData ? { canvasData: currentSlide.canvasData } : undefined}
-            />
+            <div className="max-h-[500px] overflow-auto">
+              <CardEditor
+                key={`slide-${currentSlideIndex}-${cardSize}`}
+                ref={cardEditorRef}
+                onSave={handleSave}
+                initialImage={currentSlide.uploadedImage || undefined}
+                backgroundImage={currentSlide.backgroundImage || undefined}
+                cardSize={cardSize}
+                slideCount={slideCount}
+                card={currentSlide.canvasData ? { canvasData: currentSlide.canvasData } : undefined}
+              />
+            </div>
           </Card>
+
+          {/* Пример карточки */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="mt-6 bg-white/80 backdrop-blur-sm border-2 border-gray-200/50 rounded-xl p-6 shadow-xl"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              <h3 className="text-lg font-semibold text-gray-800">Пример готовой карточки</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Вот пример того, что вы можете создать с помощью нашего редактора
+            </p>
+            <div className="w-full">
+              <img
+                src="/111.png"
+                alt="Пример карточки товара"
+                className="w-full h-auto rounded-lg shadow-lg"
+              />
+            </div>
+          </motion.div>
         </motion.div>
 
         {/* Боковая панель */}
