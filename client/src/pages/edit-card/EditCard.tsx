@@ -169,7 +169,7 @@ export default function EditCard(): React.JSX.Element {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-[100dvh] flex flex-col">
       <div className="container mx-auto px-4 py-8 flex-1">
         <h1 className="text-3xl font-bold mb-6">Редактировать карточку</h1>
 
