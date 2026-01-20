@@ -1,4 +1,25 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/* Подключение шрифта Avdira из локальных файлов */
+@font-face {
+  font-family: 'Avdira';
+  src:
+    url('/fonts/Avdira_R.woff2') format('woff2'),
+    url('/fonts/Avdira_R.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Avdira';
+  src:
+    url('/fonts/Avdira_B.woff2') format('woff2'),
+    url('/fonts/Avdira_B.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   --background: 0 0% 100%;
@@ -39,7 +60,11 @@
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    'AvdiraRegular',
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .text-glow {
