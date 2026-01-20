@@ -1,4 +1,5 @@
 const ImageService = require('../services/image.service');
+const aiService = require('../services/ai.service');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -69,6 +70,51 @@ class ImageController {
     } catch (error) {
       console.error('Error deleting image:', error);
       return res.status(500).json({ error: error.message });
+    }
+  }
+
+  static async generateImage(req, res) {
+    try {
+      const userId = req.user.id;
+      const { prompt } = req.body;
+
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: 'Prompt is required' });
+      }
+
+      // Генерируем изображение через AI
+      const generatedImage = await aiService.generateMarketCard(prompt);
+
+      // Сохраняем изображение в папку uploads
+      const uploadDir = path.join(__dirname, '../../uploads');
+      await fs.mkdir(uploadDir, { recursive: true });
+
+      const filename = `generated-${Date.now()}-${Math.round(Math.random() * 1E9)}.png`;
+      const filepath = path.join(uploadDir, filename);
+      
+      await fs.writeFile(filepath, generatedImage.buffer);
+
+      const imageUrl = `/uploads/${filename}`;
+
+      // Создаем запись в БД
+      const image = await ImageService.createImage({
+        userId,
+        url: imageUrl,
+        type: 'generated',
+        prompt: prompt,
+        originalName: `generated-${filename}`,
+        metadata: {
+          uuid: generatedImage.uuid,
+          mimeType: generatedImage.mimeType,
+        }
+      });
+
+      return res.status(201).json(image);
+    } catch (error) {
+      console.error('Error generating image:', error);
+      // Более понятное сообщение об ошибке для клиента
+      const errorMessage = error.message || 'Не удалось сгенерировать изображение';
+      return res.status(500).json({ error: errorMessage });
     }
   }
 }

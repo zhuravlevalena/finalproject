@@ -40,6 +40,13 @@ export function Navbar(): React.JSX.Element {
               </Button>
               <Button
                 variant="ghost"
+                onClick={() => setLocation('/ai-card')}
+                className="cursor-pointer"
+              >
+                Карточка AI
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => setIsModalOpen(true)}
                 className="cursor-pointer"
               >
