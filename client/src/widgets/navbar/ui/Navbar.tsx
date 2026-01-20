@@ -19,7 +19,6 @@ export function Navbar(): React.JSX.Element {
           AI-Ассистент
         </button>
 
-        {/* Desktop */}
         <div className="hidden md:flex gap-4 items-center">
           {user ? (
             <>
@@ -56,7 +55,6 @@ export function Navbar(): React.JSX.Element {
           )}
         </div>
 
-        {/* Mobile burger */}
         <button
           className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-md border border-border hover:bg-secondary transition-colors"
           aria-label="Открыть меню"
@@ -66,7 +64,6 @@ export function Navbar(): React.JSX.Element {
         </button>
       </div>
 
-      {/* Mobile menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-card">
           <div className="container mx-auto px-4 py-3 flex flex-col gap-2">

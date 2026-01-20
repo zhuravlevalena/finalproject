@@ -33,7 +33,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
   }, []);
 
   const handleTemplateSelect = (templateId: number): void => {
-    setLocation(`/templates?templateId=${templateId}`);
+    setLocation(`/templates?templateId=${String(templateId)}`);
   };
 
   const handleLayoutSelect = (layoutId: number): void => {

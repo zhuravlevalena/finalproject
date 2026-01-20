@@ -53,7 +53,6 @@ type CardEditorProps = {
   };
 };
 
-// Тип для ref методов
 export type CardEditorRef = {
   addTextElements?: (
     texts: { text: string; fontSize?: number; top?: number; left?: number }[],
@@ -72,7 +71,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
     const [zoom, setZoom] = useState(100);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Текстовые свойства для панели редактирования
     const [textProps, setTextProps] = useState({
       fontSize: 24,
       fontFamily: 'Arial',
@@ -82,7 +80,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       fontStyle: 'normal' as 'normal' | 'italic',
     });
 
-    // Сохранение истории
+
     const saveHistory = useCallback(() => {
       if (!fabricCanvasRef.current) return;
       try {
@@ -99,7 +97,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       }
     }, []);
 
-    // Обновление выбранного объекта
+
     const updateSelectedObject = useCallback(() => {
       if (!fabricCanvasRef.current) return;
       const activeObject = fabricCanvasRef.current.getActiveObject();
@@ -108,9 +106,9 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       if (activeObject?.type === 'textbox') {
         const textObj = activeObject as fabric.Textbox;
         setTextProps({
-          fontSize: textObj.fontSize || 24,
-          fontFamily: textObj.fontFamily || 'Arial',
-          fill: (textObj.fill as string) || '#000000',
+          fontSize: textObj.fontSize ?? 24,
+          fontFamily: textObj.fontFamily ?? 'Arial',
+          fill: (textObj.fill as string) ?? '#000000',
           textAlign: (textObj.textAlign as 'left' | 'center' | 'right' | 'justify') || 'left',
           fontWeight: textObj.fontWeight === 'bold' ? 'bold' : 'normal',
           fontStyle: textObj.fontStyle === 'italic' ? 'italic' : 'normal',
@@ -118,7 +116,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       }
     }, []);
 
-    // Загрузка состояния из истории
     const loadFromHistory = useCallback(
       (jsonString: string) => {
         if (!fabricCanvasRef.current) return;
@@ -130,7 +127,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       [updateSelectedObject],
     );
 
-    // Метод для добавления текстовых элементов на canvas
     const addTextElements = useCallback(
       (texts: { text: string; fontSize?: number; top?: number; left?: number }[]) => {
         if (!fabricCanvasRef.current) return;
@@ -139,7 +135,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
           const textbox = new fabric.Textbox(text, {
             left,
             top,
-            width: fabricCanvasRef.current!.getWidth() - left * 2, // Ширина с отступами
+            width: fabricCanvasRef.current!.getWidth() - left * 2, 
             fontSize,
             fontFamily: textProps.fontFamily,
             fill: textProps.fill,
@@ -149,7 +145,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             editable: true,
             selectable: true,
             evented: true,
-            splitByGrapheme: true, // Для правильного переноса строк
+            splitByGrapheme: true, 
           });
 
           fabricCanvasRef.current!.add(textbox);
@@ -161,7 +157,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       [textProps.fontFamily, textProps.fill, saveHistory],
     );
 
-    // Экспортируем методы через ref
     useImperativeHandle(
       ref,
       () => ({
@@ -170,7 +165,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       [addTextElements],
     );
 
-    // Инициализация canvas
+   
     useEffect(() => {
       if (!canvasRef.current) return;
 
@@ -183,7 +178,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         preserveObjectStacking: true,
       });
 
-      // Загружаем сохраненные данные, если есть
+     
       if (card?.canvasData && typeof card.canvasData === 'object' && 'fabric' in card.canvasData) {
         const canvasData = card.canvasData as { fabric?: Record<string, unknown> };
         const fabricData = canvasData.fabric;
@@ -227,7 +222,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         }
       }
 
-      // События canvas
+    
       canvas.on('object:added', () => {
         saveHistory();
         updateSelectedObject();
@@ -335,7 +330,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       };
     }, [cardSize, saveHistory, updateSelectedObject, card]);
 
-    // Установка фона
+    
     useEffect(() => {
       if (!backgroundImage || !fabricCanvasRef.current) return;
 
@@ -355,7 +350,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       );
     }, [backgroundImage, saveHistory]);
 
-    // Добавление основного изображения
     useEffect(() => {
       if (!initialImage || !fabricCanvasRef.current || backgroundImage) return;
 
@@ -387,7 +381,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       );
     }, [initialImage, backgroundImage, saveHistory]);
 
-    // Добавление текста
     const handleAddText = (): void => {
       if (!fabricCanvasRef.current) return;
 
@@ -412,8 +405,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       updateSelectedObject();
     };
 
-    // Добавление изображения
-    const handleAddImage = (): void => {
+      const handleAddImage = (): void => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
@@ -422,30 +414,28 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         if (!file || !fabricCanvasRef.current) return;
 
         try {
-          // Сначала загружаем файл на сервер
           const uploadedImage = await imageService.upload(file);
 
-          // Получаем URL с сервера - используем полный URL
           let imageUrl = uploadedImage.url;
           if (!imageUrl.startsWith('http')) {
-            // Если URL относительный, добавляем базовый URL
             imageUrl = `${window.location.origin}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
           }
 
           console.log('Loading image from URL:', imageUrl);
 
-          // Добавляем в canvas через URL (не base64!)
           fabric.Image.fromURL(
             imageUrl,
             (img) => {
-              if (!fabricCanvasRef.current || !img) {
+              if (!fabricCanvasRef.current ?? !img) {
                 console.error('Failed to load image or canvas not available');
                 return;
               }
+              
 
               const canvas = fabricCanvasRef.current;
-              const imgWidth = img.width || 1;
-              const imgHeight = img.height || 1;
+              if (!canvas) return;
+              const imgWidth = img.width ?? 1;
+              const imgHeight = img.height ?? 1;
               const maxWidth = canvas.getWidth() * 0.6;
               const maxHeight = canvas.getHeight() * 0.6;
               const scale = Math.min(maxWidth / imgWidth, maxHeight / imgHeight, 1);
@@ -481,7 +471,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       input.click();
     };
 
-    // Удаление выбранного объекта
     const handleDelete = (): void => {
       if (!fabricCanvasRef.current) return;
       const activeObjects = fabricCanvasRef.current.getActiveObjects();
@@ -499,14 +488,13 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       saveHistory(); // Сохраняем историю после удаления
     };
 
-    // Дублирование объекта
     const handleDuplicate = (): void => {
       if (!fabricCanvasRef.current || !selectedObject) return;
 
       selectedObject.clone((cloned: fabric.Object) => {
         cloned.set({
-          left: (cloned.left || 0) + 20,
-          top: (cloned.top || 0) + 20,
+          left: (cloned.left ?? 0) + 20,
+          top: (cloned.top ?? 0) + 20,
         });
         fabricCanvasRef.current!.add(cloned);
         fabricCanvasRef.current!.setActiveObject(cloned);
@@ -515,7 +503,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       });
     };
 
-    // Undo
     const handleUndo = (): void => {
       if (!fabricCanvasRef.current || history.undo.length < 2) return;
       const current = JSON.stringify(fabricCanvasRef.current.toJSON());
@@ -526,7 +513,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       loadFromHistory(history.undo[history.undo.length - 2]);
     };
 
-    // Redo
     const handleRedo = (): void => {
       if (!fabricCanvasRef.current || history.redo.length === 0) return;
       const current = JSON.stringify(fabricCanvasRef.current.toJSON());
@@ -537,7 +523,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       loadFromHistory(history.redo[0]);
     };
 
-    // Обновление текстовых свойств
     const updateTextProperty = (property: string, value: string | number): void => {
       if (!fabricCanvasRef.current || selectedObject?.type !== 'textbox') return;
 
@@ -548,15 +533,13 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       updateSelectedObject();
     };
 
-    // Изменение размера шрифта
     const handleFontSizeChange = (delta: number): void => {
       if (selectedObject?.type !== 'textbox') return;
       const textObj = selectedObject as fabric.Textbox;
-      const newSize = Math.max(8, Math.min(200, (textObj.fontSize || 24) + delta));
+      const newSize = Math.max(8, Math.min(200, (textObj.fontSize ?? 24) + delta));
       updateTextProperty('fontSize', newSize);
     };
 
-    // Экспорт
     const handleExport = (): void => {
       if (!fabricCanvasRef.current) return;
       const dataURL = fabricCanvasRef.current.toDataURL({
@@ -570,12 +553,10 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       link.click();
     };
 
-    // Сохранение
     const handleSave = async (): Promise<void> => {
       if (!fabricCanvasRef.current) return;
       setIsLoading(true);
       try {
-        // 1. Конвертируем canvas в PNG для превью/экспорта
         const dataURL = fabricCanvasRef.current.toDataURL({
           format: 'png',
           quality: 1,
@@ -599,14 +580,12 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
           console.error('Error serializing canvas to JSON:', jsonError);
         }
 
-        // 3. Метаданные
         const meta = {
           width: fabricCanvasRef.current.getWidth(),
           height: fabricCanvasRef.current.getHeight(),
           objectsCount: fabricCanvasRef.current.getObjects().length,
         };
 
-        // 4. Отправляем всё вместе
         onSave(file, {
           fabric: fabricJson || undefined, // Полный JSON для восстановления (если доступен)
           meta,
@@ -619,13 +598,12 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         setIsLoading(false);
       }
     };
-    // Изменение масштаба
     const handleZoom = (delta: number): void => {
       const newZoom = Math.max(25, Math.min(200, zoom + delta));
       setZoom(newZoom);
       if (fabricCanvasRef.current && canvasRef.current) {
         const scale = newZoom / 100;
-        canvasRef.current.style.transform = `scale(${scale})`;
+        canvasRef.current.style.transform = `scale(${String(scale)})`;
         canvasRef.current.style.transformOrigin = 'top left';
       }
     };
@@ -635,9 +613,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
 
     return (
       <div className="flex flex-col h-full">
-        {/* Верхняя панель инструментов */}
         <div className="flex items-center gap-2 p-3 bg-gray-50 border-b border-gray-200 flex-wrap">
-          {/* Группа добавления */}
           <div className="flex items-center gap-1 border-r pr-2 mr-2">
             <button
               onClick={handleAddText}
@@ -657,7 +633,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             </button>
           </div>
 
-          {/* Группа истории */}
           <div className="flex items-center gap-1 border-r pr-2 mr-2">
             <button
               onClick={handleUndo}
@@ -677,7 +652,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             </button>
           </div>
 
-          {/* Группа действий */}
           <div className="flex items-center gap-1 border-r pr-2 mr-2">
             <button
               onClick={handleDuplicate}
@@ -697,7 +671,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             </button>
           </div>
 
-          {/* Масштаб */}
           <div className="flex items-center gap-2 border-r pr-2 mr-2">
             <button
               onClick={() => handleZoom(-10)}
@@ -714,7 +687,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             </button>
           </div>
 
-          {/* Сохранение и экспорт */}
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={handleSave}
@@ -737,25 +709,22 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         </div>
 
         <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
-          {/* Canvas область */}
           <div className="flex-1 flex items-center justify-center p-4 bg-gray-100 overflow-auto">
             <div
               className="bg-white shadow-lg rounded-lg p-2"
-              style={{ transform: `scale(${zoom / 100})` }}
+              style={{ transform: `scale(${String(zoom / 100)})` }}
+
             >
               <canvas ref={canvasRef} />
             </div>
           </div>
 
-          {/* Правая панель свойств */}
           {selectedObject && (
             <div className="w-full md:w-80 bg-white border-t md:border-t-0 md:border-l border-gray-200 p-4 overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4">Редактирование</h3>
 
-              {/* Редактирование текста */}
               {isTextSelected && (
                 <div className="space-y-4">
-                  {/* Размер шрифта */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Размер шрифта</label>
                     <div className="flex items-center gap-2">
@@ -785,7 +754,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     </div>
                   </div>
 
-                  {/* Шрифт */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Шрифт</label>
                     <select
@@ -803,7 +771,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     </select>
                   </div>
 
-                  {/* Цвет текста */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Цвет текста</label>
                     <input
@@ -814,7 +781,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     />
                   </div>
 
-                  {/* Стили текста */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Стиль</label>
                     <div className="flex gap-2">
@@ -847,7 +813,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     </div>
                   </div>
 
-                  {/* Выравнивание */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Выравнивание</label>
                     <div className="flex gap-2">
@@ -886,7 +851,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 </div>
               )}
 
-              {/* Редактирование изображения */}
               {isImageSelected && (
                 <div className="space-y-4">
                   <div>
@@ -895,7 +859,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                       <button
                         onClick={() => {
                           if (selectedObject && fabricCanvasRef.current) {
-                            const currentAngle = selectedObject.angle || 0;
+                            const currentAngle = selectedObject.angle ?? 0;
                             selectedObject.set('angle', (currentAngle - 15) % 360);
                             fabricCanvasRef.current.renderAll();
                           }
@@ -905,12 +869,12 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                         <RotateCw className="h-4 w-4 rotate-180" />
                       </button>
                       <span className="flex-1 text-center text-sm">
-                        {Math.round(selectedObject?.angle || 0)}°
+                        {Math.round(selectedObject?.angle ?? 0)}°
                       </span>
                       <button
                         onClick={() => {
                           if (selectedObject && fabricCanvasRef.current) {
-                            const currentAngle = selectedObject.angle || 0;
+                            const currentAngle = selectedObject.angle ?? 0;
                             selectedObject.set('angle', (currentAngle + 15) % 360);
                             fabricCanvasRef.current.renderAll();
                           }
@@ -930,7 +894,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 </div>
               )}
 
-              {/* Общие свойства */}
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <p className="text-xs text-gray-500">
                   {selectedObject.type === 'textbox' && 'Дважды кликните для редактирования текста'}

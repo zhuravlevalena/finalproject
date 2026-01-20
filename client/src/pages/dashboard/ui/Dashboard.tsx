@@ -45,7 +45,32 @@ export default function Dashboard(): React.JSX.Element {
             </Link>
           </div>
         </div>
+<<<<<<< HEAD
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {cards.map((card) => {
+            const canvasData = card.canvasData as
+              | {
+                  meta?: {
+                    slides?: {
+                      canvasData?: {
+                        fabric?: Record<string, unknown>;
+                        meta?: Record<string, unknown>;
+                      };
+                    }[];
+                    slideCount?: number;
+                    cardSize?: string;
+                  };
+                }
+              | null
+              | undefined;
+            const meta = canvasData?.meta;
+            const slides = meta?.slides ?? [];
+            const slideCount = meta?.slideCount ?? 1;
+            const cardSize = meta?.cardSize ?? '1024x768';
+=======
       </header>
+>>>>>>> main
 
       {/* main content */}
       <main className="mx-auto max-w-7xl px-6 py-8">

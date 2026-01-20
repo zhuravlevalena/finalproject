@@ -21,7 +21,6 @@ export default function AuthCallback(): React.JSX.Element {
 
     if (token) {
       setAccessToken(token);
-      // Обновляем пользователя в Redux
       dispatch(refreshThunk()).then(() => {
         setLocation('/dashboard');
       }).catch(() => {
