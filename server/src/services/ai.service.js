@@ -1,91 +1,77 @@
+const { OpenAI } = require('openai');
+const path = require('path');
+const fs = require('fs').promises;
+const { randomUUID } = require('crypto');
 require('dotenv').config();
-const OpenAI = require('openai');
 
-class AiService {
-    constructor(){
-        if (process.env.OPENAI_API_KEY) {
-            this.openai = new OpenAI({
-                apiKey: process.env.OPENAI_API_KEY
-            });
-        }
-    }
+const IMAGES_DIR = path.join(__dirname, '../img');
 
-    static async createImg(prompt){
-        try {
-            if (!process.env.OPENAI_API_KEY) {
-                throw new Error('OPENAI_API_KEY is not set in environment variables');
-            }
+const client = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPEN_API_KEY,
+});
 
-            const openai = new OpenAI({
-                apiKey: process.env.OPENAI_API_KEY
-            });
-
-            const userPrompt = prompt || "Создай описание карточки товара для зубной щетки";
-            
-            // Используем ChatGPT для генерации текстового контента
-            const completion = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [
-                    {
-                        role: "system",
-                        content: "Ты помощник для создания описаний карточек товаров. Создавай подробные и привлекательные описания товаров на русском языке."
-                    },
-                    {
-                        role: "user",
-                        content: userPrompt
-                    }
-                ],
-                max_tokens: 500,
-                temperature: 0.7,
-            });
-
-            const text = completion.choices[0]?.message?.content;
-            
-            if (!text) {
-                throw new Error('OpenAI вернул пустой ответ');
-            }
-
-            return text;
-        } catch (error) {
-            console.error('Error in createImg:', error);
-            
-            // Обработка специфичных ошибок
-            const errorMessage = error.message || '';
-            const errorString = JSON.stringify(error);
-            
-            // Проверка на недействительный API ключ
-            if (errorMessage.includes('API key') || errorMessage.includes('Invalid API key') || errorString.includes('401')) {
-                throw new Error('Неверный API ключ. Проверьте OPENAI_API_KEY в .env файле. Убедитесь, что ключ правильный и не содержит лишних пробелов или кавычек.');
-            }
-            
-            if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorString.includes('429')) {
-                throw new Error('Превышен лимит запросов к OpenAI API. Попробуйте позже или обновите тарифный план.');
-            }
-            
-            if (errorMessage.includes('401') || errorString.includes('401')) {
-                throw new Error('Ошибка авторизации. Проверьте OPENAI_API_KEY в .env файле.');
-            }
-            
-            if (errorMessage.includes('insufficient_quota') || errorString.includes('insufficient_quota')) {
-                throw new Error('Недостаточно средств на счету OpenAI. Пополните баланс.');
-            }
-            
-            // Обработка ошибки недоступности в регионе
-            if (errorMessage.includes('Country, region, or territory not supported') || 
-                errorMessage.includes('unsupported_country_region_territory') ||
-                errorString.includes('unsupported_country_region_territory') ||
-                error.code === 'unsupported_country_region_territory') {
-                throw new Error('OpenAI API недоступен в вашем регионе. Используйте VPN или альтернативный сервис (например, Google Gemini).');
-            }
-            
-            // Обработка ошибки 403 (запрещено)
-            if (error.status === 403 || errorString.includes('403')) {
-                throw new Error('Доступ к OpenAI API запрещен. Возможно, сервис недоступен в вашем регионе или требуется настройка прокси.');
-            }
-            
-            throw new Error(`Failed to generate content: ${errorMessage}`);
-        }
-    }
+// Функция для сохранения base64 картинки в файл
+async function saveImageFromBase64(base64DataUrl, filename) {
+  // Создаем папку img если её нет
+  await fs.mkdir(IMAGES_DIR, { recursive: true });
+  
+  // Извлекаем base64 часть из data URL (формат: data:image/png;base64,iVBORw0KG...)
+  const base64Match = base64DataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+  if (!base64Match) {
+    throw new Error('Неверный формат base64 data URL');
+  }
+  
+  const [, imageType, base64Data] = base64Match;
+  const buffer = Buffer.from(base64Data, 'base64');
+  const filepath = path.join(IMAGES_DIR, filename);
+  
+  await fs.writeFile(filepath, buffer);
+  return filepath;
 }
 
-module.exports = AiService;
+async function createImg(query){
+const apiResponse = await client.chat.completions.create({
+  model: 'black-forest-labs/flux.2-klein-4b',
+  messages: [
+    {
+      role: 'user',
+      content: query || 'Generate a beautiful sunset over mountains',
+    },
+  ],
+  modalities: ['image', 'text']
+});
+
+const response = apiResponse.choices[0].message;
+if (response.images) {
+  // Используем for...of вместо forEach для правильной работы с async
+  for (let index = 0; index < response.images.length; index++) {
+    const image = response.images[index];
+    const imageUrl = image.image_url.url; // Base64 data URL
+    console.log(`Generated image ${index + 1}: ${imageUrl.substring(0, 50)}...`);
+    
+    // Сохраняем картинку в папку img
+    const filename = `ai-${Date.now()}-${randomUUID()}-${index + 1}.png`;
+    try {
+      const savedPath = await saveImageFromBase64(imageUrl, filename);
+      console.log(`✓ Картинка сохранена: ${savedPath}`);
+    } catch (error) {
+      console.error(`✗ Ошибка при сохранении картинки ${index + 1}:`, error.message);
+    }
+  }
+}
+}
+
+// Экспорт для использования из контроллера (/api/ai/ask)
+module.exports = {
+  createImg,
+};
+
+// Запуск при прямом вызове файла (node src/services/ai.service.js "твой промпт")
+if (require.main === module) {
+  const prompt = process.argv.slice(2).join(' ').trim() || 'Гора Фудзи';
+  createImg(prompt).catch((error) => {
+    console.error('Ошибка:', error);
+    process.exitCode = 1;
+  });
+}

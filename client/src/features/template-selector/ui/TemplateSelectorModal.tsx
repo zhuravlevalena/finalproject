@@ -54,9 +54,9 @@ export function TemplateSelectorModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90dvh] overflow-y-auto">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b">
+        <div className="flex justify-between items-center p-4 sm:p-6 border-b">
           <h2 className="text-2xl font-bold text-gray-900">Выберите маркетплейс</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={24} />
@@ -64,11 +64,11 @@ export function TemplateSelectorModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6">
           {/* Marketplace Selection */}
           <div>
             <h3 className="text-lg font-semibold mb-3 text-gray-900">Маркетплейс</h3>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {(Object.keys(marketplaceInfo) as Marketplace[]).map((marketplace) => (
                 <button
                   key={marketplace}
@@ -77,7 +77,7 @@ export function TemplateSelectorModal({
                     selectedMarketplace === marketplace
                       ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
+                  } w-full sm:w-auto`}
                 >
                   {marketplaceInfo[marketplace].name}
                 </button>
