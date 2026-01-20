@@ -52,6 +52,13 @@ export function Navbar(): React.JSX.Element {
               >
                 Шаблоны
               </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setLocation('/pricing')}
+                className="cursor-pointer"
+              >
+                Тарифы
+              </Button>
               <LogoutButton />
             </>
           ) : (
@@ -69,6 +76,13 @@ export function Navbar(): React.JSX.Element {
                 className="cursor-pointer"
               >
                 Создать аккаунт
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setLocation('/pricing')}
+                className="cursor-pointer"
+              >
+                Тарифы
               </Button>
             </>
           )}
