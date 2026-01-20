@@ -8,9 +8,17 @@ import { createProductCardThunk } from '@/entities/productcard/model/productcard
 import { getOrCreateProductProfileThunk } from '@/entities/productprofile/model/productprofile.thunk';
 
 import { Card } from '@/shared/ui/card';
-import { Upload, Loader2, Image as ImageIcon, Settings, FileText, X, Plus } from 'lucide-react';
+import {
+  Upload,
+  Loader2,
+  Image as ImageIcon,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from 'lucide-react';
 import type { CreateProductCardDto } from '@/entities/productcard/model/productcard.types';
-import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
+import { CardEditor, type CardEditorRef } from '@/widgets/card-editor/ui/CardEditor';
 
 type CardSize = '800x600' | '1024x768' | '1200x900' | '1920x1080';
 type SlideCount = 1 | 2 | 3 | 4 | 5;
@@ -28,35 +36,35 @@ const getAvailableSizes = (marketplaceSlug: string | null): CardSize[] => {
   return marketplaceCardSizes[marketplaceSlug] || ['1024x768'];
 };
 
+// Тип для данных слайда
+type SlideData = {
+  canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> };
+  uploadedImage?: { id: number; url: string } | null;
+  backgroundImage?: { id: number; url: string } | null;
+};
+
 export default function CreateCard(): React.JSX.Element {
   const [, setLocation] = useLocation();
   const dispatch = useAppDispatch();
-  const cardEditorRef = useRef<{
-    addTextToCanvas?: (text: string, options?: { fontSize?: number; top?: number }) => void;
-  } | null>(null);
+  const cardEditorRef = useRef<CardEditorRef | null>(null);
 
   const [selectedMarketplace, setSelectedMarketplace] = useState<number | null>(null);
   const [selectedMarketplaceSlug, setSelectedMarketplaceSlug] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
-  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
-  const [uploadedImageData, setUploadedImageData] = useState<{ id: number; url: string } | null>(
-    null,
-  );
-  const [backgroundImage, setBackgroundImage] = useState<File | null>(null);
-  const [backgroundImageData, setBackgroundImageData] = useState<{
-    id: number;
-    url: string;
-  } | null>(null);
   const [productType, setProductType] = useState('');
-
-  // Состояния для содержания карточки
-  const [productTitle, setProductTitle] = useState('');
-  const [productDescription, setProductDescription] = useState('');
-  const [productCharacteristics, setProductCharacteristics] = useState('');
-
   const [cardSize, setCardSize] = useState<CardSize>('1024x768');
   const [slideCount, setSlideCount] = useState<SlideCount>(1);
-  const [activeTab, setActiveTab] = useState<'settings' | 'images' | 'content'>('settings');
+  const [activeTab, setActiveTab] = useState<'settings' | 'images'>('settings');
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+  // Массив данных для каждого слайда
+  const [slides, setSlides] = useState<SlideData[]>([
+    {
+      canvasData: undefined,
+      uploadedImage: null,
+      backgroundImage: null,
+    },
+  ]);
 
   const { marketplaces, loading: marketplacesLoading } = useAppSelector(
     (state) => state.marketplace,
@@ -65,6 +73,28 @@ export default function CreateCard(): React.JSX.Element {
   const { uploading: isUploadingImage } = useAppSelector((state) => state.image);
   const { creating: isCreatingCard } = useAppSelector((state) => state.productCard);
 
+  // Обновляем массив слайдов при изменении slideCount
+  useEffect(() => {
+    setSlides((prev) => {
+      const newSlides = [...prev];
+      while (newSlides.length < slideCount) {
+        newSlides.push({
+          canvasData: undefined,
+          uploadedImage: null,
+          backgroundImage: null,
+        });
+      }
+      while (newSlides.length > slideCount) {
+        newSlides.pop();
+      }
+      return newSlides;
+    });
+    // Если текущий слайд больше количества слайдов, переключаемся на последний
+    if (currentSlideIndex >= slideCount) {
+      setCurrentSlideIndex(Math.max(0, slideCount - 1));
+    }
+  }, [slideCount]);
+
   useEffect(() => {
     void dispatch(fetchMarketplacesThunk());
   }, [dispatch]);
@@ -72,19 +102,57 @@ export default function CreateCard(): React.JSX.Element {
   useEffect(() => {
     if (selectedMarketplace) {
       void dispatch(fetchTemplatesThunk(selectedMarketplace));
-      setSelectedTemplate(null); // Сбрасываем выбранный шаблон при смене маркетплейса
+      setSelectedTemplate(null);
     } else {
       setSelectedTemplate(null);
     }
   }, [dispatch, selectedMarketplace]);
 
+  // Функция для сохранения текущего состояния canvas перед переключением слайда
+  const saveCurrentSlideCanvas = () => {
+    if (!cardEditorRef.current?.getCanvasData) return;
+
+    const canvasData = cardEditorRef.current.getCanvasData();
+    if (canvasData) {
+      setSlides((prev) => {
+        const newSlides = [...prev];
+        newSlides[currentSlideIndex] = {
+          ...newSlides[currentSlideIndex],
+          canvasData: {
+            fabric: canvasData.fabric || null,
+            meta: canvasData.meta || {},
+          },
+        };
+        return newSlides;
+      });
+    }
+  };
+
+  // Обработчик переключения слайда
+  const handleSlideChange = (newIndex: number) => {
+    if (newIndex === currentSlideIndex) return;
+
+    // Сохраняем текущий слайд перед переключением
+    saveCurrentSlideCanvas();
+
+    // Переключаемся на новый слайд
+    setCurrentSlideIndex(newIndex);
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setUploadedImage(file);
       const result = await dispatch(uploadImageThunk(file));
       if (uploadImageThunk.fulfilled.match(result)) {
-        setUploadedImageData({ id: result.payload.id, url: result.payload.url });
+        const imageData = { id: result.payload.id, url: result.payload.url };
+        setSlides((prev) => {
+          const newSlides = [...prev];
+          newSlides[currentSlideIndex] = {
+            ...newSlides[currentSlideIndex],
+            uploadedImage: imageData,
+          };
+          return newSlides;
+        });
       }
     }
   };
@@ -92,60 +160,55 @@ export default function CreateCard(): React.JSX.Element {
   const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setBackgroundImage(file);
       const result = await dispatch(uploadImageThunk(file));
       if (uploadImageThunk.fulfilled.match(result)) {
-        setBackgroundImageData({ id: result.payload.id, url: result.payload.url });
+        const imageData = { id: result.payload.id, url: result.payload.url };
+        setSlides((prev) => {
+          const newSlides = [...prev];
+          newSlides[currentSlideIndex] = {
+            ...newSlides[currentSlideIndex],
+            backgroundImage: imageData,
+          };
+          return newSlides;
+        });
       }
     }
   };
 
   const handleRemoveImage = () => {
-    setUploadedImage(null);
-    setUploadedImageData(null);
+    setSlides((prev) => {
+      const newSlides = [...prev];
+      newSlides[currentSlideIndex] = {
+        ...newSlides[currentSlideIndex],
+        uploadedImage: null,
+      };
+      return newSlides;
+    });
   };
 
   const handleRemoveBackground = () => {
-    setBackgroundImage(null);
-    setBackgroundImageData(null);
-  };
-
-  // Функция для добавления текста на canvas
-  const handleAddContentToCanvas = () => {
-    // Создаем единый текст из всех полей
-    const contentParts: string[] = [];
-
-    if (productTitle.trim()) {
-      contentParts.push(productTitle.trim());
-    }
-
-    if (productDescription.trim()) {
-      contentParts.push(`\n${productDescription.trim()}`);
-    }
-
-    if (productCharacteristics.trim()) {
-      contentParts.push(`\n\nХарактеристики:\n${productCharacteristics.trim()}`);
-    }
-
-    if (contentParts.length === 0) {
-      // eslint-disable-next-line no-alert
-      alert('Заполните хотя бы одно поле для добавления на карточку');
-      return;
-    }
-
-    const fullContent = contentParts.join('');
-
-    // Добавляем текст на canvas через CardEditor
-    // Для этого нужно будет добавить метод в CardEditor или использовать другой подход
-    // Пока просто сохраняем в метаданные, а пользователь может добавить текст вручную
-    // eslint-disable-next-line no-alert
-    alert('Содержание сохранено. Вы можете добавить текст на карточку вручную через редактор.');
+    setSlides((prev) => {
+      const newSlides = [...prev];
+      newSlides[currentSlideIndex] = {
+        ...newSlides[currentSlideIndex],
+        backgroundImage: null,
+      };
+      return newSlides;
+    });
   };
 
   const handleSave = async (
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
   ) => {
+    // Сохраняем данные текущего слайда перед сохранением
+    const updatedSlides = [...slides];
+    updatedSlides[currentSlideIndex] = {
+      ...updatedSlides[currentSlideIndex],
+      canvasData: canvasData || updatedSlides[currentSlideIndex].canvasData,
+    };
+    setSlides(updatedSlides);
+
     let profileId: number | undefined;
     if (productType) {
       const result = await dispatch(getOrCreateProductProfileThunk(productType));
@@ -154,35 +217,33 @@ export default function CreateCard(): React.JSX.Element {
       }
     }
 
-    // Формируем полное содержание карточки
-    const cardContent = {
-      title: productTitle,
-      description: productDescription,
-      characteristics: productCharacteristics,
-    };
+    // Создаем массив всех слайдов с их данными
+    const slidesData = updatedSlides.map((slide, index) => ({
+      canvasData: slide.canvasData || { fabric: null, meta: {} },
+      imageId: slide.uploadedImage?.id,
+      backgroundImageId: slide.backgroundImage?.id,
+      slideIndex: index,
+    }));
 
     const cardData: CreateProductCardDto = {
       marketplaceId: selectedMarketplace || undefined,
       templateId: selectedTemplate || undefined,
       productProfileId: profileId,
-      imageId: uploadedImageData?.id,
+      imageId: updatedSlides[0]?.uploadedImage?.id, // Основное изображение - первый слайд
       canvasData: {
-        fabric: canvasData?.fabric || null, // Полный Fabric JSON для восстановления
+        fabric: null, // Будет храниться в slides
         meta: {
-          ...canvasData?.meta,
-          cardContent,
           slideCount,
           cardSize,
-          backgroundImageId: backgroundImageData?.id,
+          slides: slidesData, // Массив всех слайдов
         },
       },
       status: 'completed',
     };
 
-    // Передаем файл в thunk
+    // Сохраняем первый слайд как основное изображение
     const result = await dispatch(createProductCardThunk({ data: cardData, imageFile }));
     if (createProductCardThunk.fulfilled.match(result)) {
-      // Небольшая задержка для обновления списка карточек
       setTimeout(() => {
         setLocation('/dashboard');
       }, 100);
@@ -195,6 +256,8 @@ export default function CreateCard(): React.JSX.Element {
     { value: '1200x900', label: '1200 × 900', description: 'Широкий' },
     { value: '1920x1080', label: '1920 × 1080', description: 'Full HD' },
   ];
+
+  const currentSlide = slides[currentSlideIndex] || slides[0];
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -209,21 +272,57 @@ export default function CreateCard(): React.JSX.Element {
         {/* Редактор - занимает 3 колонки */}
         <div className="lg:col-span-3">
           <Card className="p-6">
+            {/* Переключатель слайдов */}
+            {slideCount > 1 && (
+              <div className="mb-4 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                <button
+                  onClick={() => handleSlideChange(Math.max(0, currentSlideIndex - 1))}
+                  disabled={currentSlideIndex === 0}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="text-sm">Предыдущий</span>
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    Слайд {currentSlideIndex + 1} из {slideCount}
+                  </span>
+                  <div className="flex gap-1">
+                    {slides.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSlideChange(index)}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          index === currentSlideIndex
+                            ? 'bg-blue-600'
+                            : 'bg-gray-300 hover:bg-gray-400'
+                        }`}
+                        title={`Слайд ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleSlideChange(Math.min(slideCount - 1, currentSlideIndex + 1))}
+                  disabled={currentSlideIndex === slideCount - 1}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span className="text-sm">Следующий</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {/* CardEditor с key для пересоздания при смене слайда */}
             <CardEditor
+              key={`slide-${currentSlideIndex}-${cardSize}`} // Пересоздаем при смене слайда или размера
               ref={cardEditorRef}
               onSave={handleSave}
-              initialImage={
-                uploadedImageData
-                  ? { id: uploadedImageData.id, url: uploadedImageData.url }
-                  : undefined
-              }
-              backgroundImage={
-                backgroundImageData
-                  ? { id: backgroundImageData.id, url: backgroundImageData.url }
-                  : undefined
-              }
+              initialImage={currentSlide.uploadedImage || undefined}
+              backgroundImage={currentSlide.backgroundImage || undefined}
               cardSize={cardSize}
               slideCount={slideCount}
+              card={currentSlide.canvasData ? { canvasData: currentSlide.canvasData } : undefined}
             />
           </Card>
         </div>
@@ -231,7 +330,7 @@ export default function CreateCard(): React.JSX.Element {
         {/* Боковая панель настроек - 1 колонка */}
         <div className="space-y-4">
           <Card className="p-4">
-            {/* Табы - исправлено выравнивание */}
+            {/* Табы */}
             <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('settings')}
@@ -257,18 +356,6 @@ export default function CreateCard(): React.JSX.Element {
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
                 )}
               </button>
-              <button
-                onClick={() => setActiveTab('content')}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${
-                  activeTab === 'content' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <FileText className="h-4 w-4 flex-shrink-0" />
-                <span>Содержание</span>
-                {activeTab === 'content' && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-                )}
-              </button>
             </div>
 
             {/* Контент табов */}
@@ -284,12 +371,10 @@ export default function CreateCard(): React.JSX.Element {
                       const marketplaceId = e.target.value ? Number(e.target.value) : null;
                       setSelectedMarketplace(marketplaceId);
 
-                      // Находим slug выбранного маркетплейса
                       const marketplace = marketplaces?.find((mp) => mp.id === marketplaceId);
                       const slug = marketplace?.slug || null;
                       setSelectedMarketplaceSlug(slug);
 
-                      // Автоматически устанавливаем первый доступный размер для выбранного маркетплейса
                       if (slug) {
                         const availableSizes = getAvailableSizes(slug);
                         if (availableSizes.length > 0) {
@@ -343,7 +428,6 @@ export default function CreateCard(): React.JSX.Element {
                   />
                 </div>
 
-                {/* Показываем селект размера только после выбора маркетплейса */}
                 {selectedMarketplace && selectedMarketplaceSlug && (
                   <div>
                     <label className="block text-sm font-medium mb-2 text-gray-700">
@@ -375,7 +459,12 @@ export default function CreateCard(): React.JSX.Element {
                   </label>
                   <select
                     value={slideCount}
-                    onChange={(e) => setSlideCount(Number(e.target.value) as SlideCount)}
+                    onChange={(e) => {
+                      // Сохраняем текущий слайд перед изменением количества
+                      saveCurrentSlideCanvas();
+                      const newCount = Number(e.target.value) as SlideCount;
+                      setSlideCount(newCount);
+                    }}
                     className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   >
                     {[1, 2, 3, 4, 5].map((count) => (
@@ -384,12 +473,21 @@ export default function CreateCard(): React.JSX.Element {
                       </option>
                     ))}
                   </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Вы можете создать несколько слайдов для одной карточки
+                  </p>
                 </div>
               </div>
             )}
 
             {activeTab === 'images' && (
               <div className="space-y-6">
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-700 font-medium">
+                    Изображения для слайда {currentSlideIndex + 1}
+                  </p>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium mb-2 text-gray-700">
                     Основное изображение
@@ -419,7 +517,7 @@ export default function CreateCard(): React.JSX.Element {
                         Загрузка...
                       </div>
                     )}
-                    {uploadedImageData && (
+                    {currentSlide.uploadedImage && (
                       <div className="mt-3 p-4 bg-green-50 rounded-lg border border-green-200 relative">
                         <button
                           onClick={handleRemoveImage}
@@ -432,7 +530,7 @@ export default function CreateCard(): React.JSX.Element {
                           ✓ Изображение загружено
                         </p>
                         <img
-                          src={uploadedImageData.url}
+                          src={currentSlide.uploadedImage.url}
                           alt="Preview"
                           className="w-full h-48 object-contain rounded"
                         />
@@ -470,7 +568,7 @@ export default function CreateCard(): React.JSX.Element {
                         Загрузка...
                       </div>
                     )}
-                    {backgroundImageData && (
+                    {currentSlide.backgroundImage && (
                       <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200 relative">
                         <button
                           onClick={handleRemoveBackground}
@@ -481,7 +579,7 @@ export default function CreateCard(): React.JSX.Element {
                         </button>
                         <p className="text-sm text-blue-700 font-medium mb-2">✓ Фон загружен</p>
                         <img
-                          src={backgroundImageData.url}
+                          src={currentSlide.backgroundImage.url}
                           alt="Background preview"
                           className="w-full h-48 object-contain rounded"
                         />
@@ -492,81 +590,6 @@ export default function CreateCard(): React.JSX.Element {
                     )}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'content' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Название товара
-                  </label>
-                  <input
-                    type="text"
-                    value={productTitle}
-                    onChange={(e) => setProductTitle(e.target.value)}
-                    placeholder="Введите название товара"
-                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Описание товара
-                  </label>
-                  <textarea
-                    value={productDescription}
-                    onChange={(e) => setProductDescription(e.target.value)}
-                    placeholder="Введите описание товара..."
-                    rows={4}
-                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">{productDescription.length} символов</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Характеристики товара
-                  </label>
-                  <textarea
-                    value={productCharacteristics}
-                    onChange={(e) => setProductCharacteristics(e.target.value)}
-                    placeholder="Введите характеристики товара (каждая с новой строки):&#10;• Характеристика 1&#10;• Характеристика 2&#10;• Характеристика 3"
-                    rows={6}
-                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-colors"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {productCharacteristics.length} символов
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-gray-200">
-                  <button
-                    onClick={handleAddContentToCanvas}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Добавить на карточку</span>
-                  </button>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Содержание будет сохранено в метаданных карточки
-                  </p>
-                </div>
-
-                {(productTitle || productDescription || productCharacteristics) && (
-                  <div className="pt-2">
-                    <button
-                      onClick={() => {
-                        setProductTitle('');
-                        setProductDescription('');
-                        setProductCharacteristics('');
-                      }}
-                      className="w-full text-sm text-red-600 hover:text-red-800 transition-colors py-2"
-                    >
-                      Очистить все поля
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </Card>
