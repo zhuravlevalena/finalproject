@@ -271,7 +271,7 @@ export default function CreateCard(): React.JSX.Element {
           <Card className="p-6">
             {/* Переключатель слайдов */}
             {slideCount > 1 && (
-              <div className="mb-4 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-gray-50 p-3 rounded-lg">
                 <button
                   onClick={() => handleSlideChange(Math.max(0, currentSlideIndex - 1))}
                   disabled={currentSlideIndex === 0}

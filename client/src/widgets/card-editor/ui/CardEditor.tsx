@@ -609,7 +609,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
           {/* Canvas область */}
           <div className="flex-1 flex items-center justify-center p-4 bg-gray-100 overflow-auto">
             <div
@@ -622,7 +622,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
 
           {/* Правая панель свойств */}
           {selectedObject && (
-            <div className="w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto">
+            <div className="w-full md:w-80 bg-white border-t md:border-t-0 md:border-l border-gray-200 p-4 overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4">Редактирование</h3>
 
               {/* Редактирование текста */}
