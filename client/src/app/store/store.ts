@@ -6,6 +6,7 @@ import imageReducer from '@/entities/image/model/image.slice';
 import productCardReducer from '@/entities/productcard/model/productcard.slice';
 import productProfileReducer from '@/entities/productprofile/model/productprofile.slice';
 import aiReducer from '@/entities/ai/model/ai.slice';
+import navbarReducer from '@/widgets/navbar/model/navbar.slice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     productCard: productCardReducer,
     productProfile: productProfileReducer,
     ai: aiReducer,
+    navbar: navbarReducer,
   },
 });
 

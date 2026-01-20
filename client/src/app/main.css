@@ -67,6 +67,33 @@ body {
     sans-serif;
 }
 
+::selection {
+  background-color: #d1d5db;
+  color: inherit;
+}
+
+::-moz-selection {
+  background-color: #d1d5db;
+  color: inherit;
+}
+
 .text-glow {
   text-shadow: 0 0 10px currentColor;
 }
+
+@keyframes nav-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-slide-in {
+  animation: nav-slide-in 0.25s ease-out;
+}
+

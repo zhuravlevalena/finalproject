@@ -17,6 +17,8 @@ import { refreshThunk } from '@/entities/user/model/user.thunk';
 import EditCard from '@/pages/edit-card/EditCard';
 import VerifyEmail from '@/pages/verify-email/ui/VerifyEmail';
 import PricingPage from '@/pages/pricing/ui/PricingPage';
+import SearchPage from '@/pages/search/ui/SearchPage';
+import SettingsPage from '@/pages/settings/ui/SettingsPage';
 
 function Layout({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [location] = useLocation();
@@ -26,7 +28,7 @@ function Layout({ children }: { children: React.ReactNode }): React.JSX.Element 
     <div
       className={`${
         isAuthPage ? 'min-h-[100dvh]' : 'min-h-[100dvh]'
-      } bg-background flex flex-col font-body selection:bg-primary/30 selection:text-white overflow-x-hidden`}
+      } bg-background flex flex-col font-body overflow-x-hidden`}
     >
       {!isAuthPage && <Navbar />}
       <main className={isAuthPage ? 'flex-grow' : 'flex-1 overflow-y-auto'}>{children}</main>
@@ -66,6 +68,8 @@ export default function Router(): React.JSX.Element {
         <Route path="/template-selection" component={TemplateSelectionPage} />
         <Route path="/templates" component={TemplatesPage} />
         <Route path="/pricing" component={PricingPage} />
+        <Route path="/search" component={SearchPage} />
+        <Route path="/settings">{isLogged ? <SettingsPage /> : <Login />}</Route>
         <Route path="/layout-editor/:id">{isLogged ? <LayoutEditorPage /> : <Login />}</Route>
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/login">{!isLogged ? <Login /> : null}</Route>

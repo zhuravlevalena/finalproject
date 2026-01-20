@@ -23,6 +23,9 @@ module.exports = (sequelize, DataTypes) => {
       emailVerified: DataTypes.BOOLEAN,
       verificationToken: DataTypes.STRING,
       verificationTokenExpires: DataTypes.DATE,
+      birthDate: DataTypes.DATEONLY,
+      gender: DataTypes.STRING,
+      phone: DataTypes.STRING,
     },
     {
       sequelize,

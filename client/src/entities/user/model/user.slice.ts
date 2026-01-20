@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { UserState } from "./user.types";
-import { loginThunk, logoutThunk, refreshThunk, registerThunk } from "./user.thunk";
+import { loginThunk, logoutThunk, refreshThunk, registerThunk, updateProfileThunk } from "./user.thunk";
 
 const initialState: UserState = {
     user: null,
@@ -70,6 +70,20 @@ const userSlice = createSlice({
         console.error(action.error);
         state.loading = false;
       });
+
+      // Update profile
+      builder
+        .addCase(updateProfileThunk.fulfilled, (state, action) => {
+          state.user = action.payload;
+          state.loading = false;
+        })
+        .addCase(updateProfileThunk.pending, (state) => {
+          state.loading = true;
+        })
+        .addCase(updateProfileThunk.rejected, (state, action) => {
+          console.error(action.error);
+          state.loading = false;
+        });
 
     },
 });

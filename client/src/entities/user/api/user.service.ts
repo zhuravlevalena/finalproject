@@ -69,6 +69,17 @@ class UserService {
   static googleAuth(): void {
     window.location.href = '/api/auth/google';
   }
+
+  static async updateProfile(data: {
+    name?: string;
+    birthDate?: string | null;
+    gender?: string | null;
+    phone?: string | null;
+    email?: string;
+  }): Promise<User> {
+    const response = await axiosInstance.put<User>('/users/me', data);
+    return response.data;
+  }
 }
 
 export default UserService;
