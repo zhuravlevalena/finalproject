@@ -20,7 +20,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// Session configuration for Passport
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
@@ -29,16 +28,14 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 24 * 60 * 60 * 1000,
     },
-  })
+  }),
 );
 
-// Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Статические файлы для загруженных изображений
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.use('/api/auth', authRouter);
@@ -50,10 +47,9 @@ app.use('/api/images', imageRouter);
 app.use('/api/ai',aiRouter)
 
 
-// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.log(err);
-  res.sendStatus(500)
+  res.sendStatus(500);
 });
 
 module.exports = app;

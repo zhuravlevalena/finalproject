@@ -5,36 +5,34 @@ import { X } from 'lucide-react';
 type TemplateSelectorModalProps = {
   isOpen: boolean;
   onClose: () => void;
-}
+};
 
 type Marketplace = 'ozon' | 'wildberries' | 'yandex';
-type ImageFormat = 'square' | 'horizontal';
 
 const marketplaceInfo = {
   ozon: {
     name: 'Ozon',
-    requirements:
-      'Минимальный размер изображения: 800x800px. Формат: JPG, PNG. Максимальный размер файла: 10MB.',
+    formats: 'JPEG, JPG, PNG, HEIC, WEBP',
+    resolution: 'Одежда: минимум 900×1200 px. Остальное: 200×200 до 4320×7680 px',
+    aspectRatio: 'Вертикальное 3:4',
+    maxSize: '10 МБ',
+    minResolution: '900×1200',
   },
   wildberries: {
     name: 'Wildberries',
-    requirements:
-      'Минимальный размер изображения: 900x1200px. Формат: JPG, PNG. Максимальный размер файла: 10MB.',
+    formats: 'JPG, PNG, WEBP',
+    resolution: 'Минимум 700×900 px (макс. сторона до 8000 px)',
+    aspectRatio: 'Вертикальное 3:4',
+    maxSize: '10 МБ',
+    minResolution: '700×900',
   },
   yandex: {
     name: 'Яндекс.Маркет',
-    requirements:
-      'Минимальный размер изображения: 600x600px. Формат: JPG, PNG. Максимальный размер файла: 5MB.',
-  },
-};
-
-const formatSizes = {
-  square: { width: 1200, height: 1200, label: 'Квадрат', description: 'Основное изображение' },
-  horizontal: {
-    width: 1200,
-    height: 800,
-    label: 'Горизонтальное',
-    description: 'Дополнительное изображение',
+    formats: 'JPG, PNG, WEBP',
+    resolution: 'Минимум 300×300 px',
+    aspectRatio: '3:4 или 1:1',
+    maxSize: '10 МБ',
+    minResolution: '300×300',
   },
 };
 
@@ -47,17 +45,19 @@ export function TemplateSelectorModal({
 
   if (!isOpen) return null;
 
-  const handleFormatSelect = (format: ImageFormat): void => {
-    setLocation(`/templates?marketplace=${selectedMarketplace}&format=${format}`);
+  const handleContinue = (): void => {
+    setLocation(`/template-selection?marketplace=${selectedMarketplace}`);
     onClose();
   };
 
+  const info = marketplaceInfo[selectedMarketplace];
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold text-gray-900">Выберите формат карточки</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Выберите маркетплейс</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={24} />
           </button>
@@ -73,7 +73,7 @@ export function TemplateSelectorModal({
                 <button
                   key={marketplace}
                   onClick={() => setSelectedMarketplace(marketplace)}
-                  className={`px-6 py-2 rounded-lg border-2 transition-all ${
+                  className={`px-6 py-3 rounded-lg border-2 transition-all ${
                     selectedMarketplace === marketplace
                       ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
@@ -86,64 +86,66 @@ export function TemplateSelectorModal({
           </div>
 
           {/* Requirements Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-semibold text-blue-900 mb-1">
-              Требования {marketplaceInfo[selectedMarketplace].name}
-            </h4>
-            <p className="text-sm text-blue-700">
-              {marketplaceInfo[selectedMarketplace].requirements}
-            </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
+            <h4 className="font-semibold text-blue-900 mb-3 text-lg">Требования {info.name}</h4>
+            <div className="space-y-2 text-sm text-blue-800">
+              <div className="flex">
+                <span className="font-medium w-40">Форматы:</span>
+                <span>{info.formats}</span>
+              </div>
+              <div className="flex">
+                <span className="font-medium w-40">Разрешение:</span>
+                <span>{info.resolution}</span>
+              </div>
+              <div className="flex">
+                <span className="font-medium w-40">Соотношение сторон:</span>
+                <span>{info.aspectRatio}</span>
+              </div>
+              <div className="flex">
+                <span className="font-medium w-40">Макс. размер:</span>
+                <span>{info.maxSize}</span>
+              </div>
+            </div>
           </div>
 
-          {/* Format Selection */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3 text-gray-900">Размер изображения</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {(Object.keys(formatSizes) as ImageFormat[]).map((format) => {
-                const size = formatSizes[format];
-                return (
-                  <button
-                    key={format}
-                    onClick={() => handleFormatSelect(format)}
-                    className="border-2 border-gray-200 rounded-lg p-6 hover:border-blue-500 hover:bg-blue-50 transition-all group"
+          {/* Visual Preview */}
+          <div className="flex justify-center py-4">
+            <div className="text-center">
+              <div className="bg-gray-100 rounded-lg p-6 inline-block">
+                <div
+                  className="bg-gradient-to-br from-blue-400 to-blue-600 rounded shadow-lg flex items-center justify-center"
+                  style={{
+                    width: '180px',
+                    height: '240px',
+                  }}
+                >
+                  <svg
+                    className="text-white/80"
+                    width="60"
+                    height="60"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   >
-                    <div className="flex flex-col items-center gap-3">
-                      {/* Visual representation */}
-                      <div className="bg-gray-100 rounded flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                        <div
-                          className="bg-gray-300 group-hover:bg-blue-300 transition-colors flex items-center justify-center"
-                          style={{
-                            width: format === 'square' ? '120px' : '160px',
-                            height: format === 'square' ? '120px' : '107px',
-                          }}
-                        >
-                          <svg
-                            className="text-gray-400 group-hover:text-blue-400"
-                            width="40"
-                            height="40"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm text-gray-500 mb-1">
-                          {size.width}x{size.height}
-                        </div>
-                        <div className="font-semibold text-gray-900">{size.label}</div>
-                        <div className="text-sm text-gray-600">{size.description}</div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mt-3">Формат 3:4 • {info.minResolution} px</p>
             </div>
+          </div>
+
+          {/* Continue Button */}
+          <div className="pt-2">
+            <button
+              onClick={handleContinue}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Выбрать шаблон
+            </button>
           </div>
         </div>
       </div>
