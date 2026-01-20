@@ -95,52 +95,81 @@ export default function TemplateSelectionPage(): React.JSX.Element {
       {/* Templates Grid */}
       {templates.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map((template) => (
-            <div
-              key={template.id}
-              className="border-2 border-gray-200 rounded-lg p-6 hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group"
-              onClick={() => handleTemplateSelect(template.id)}
-            >
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
+          {templates.map((template) => {
+            const layoutCount = template.layouts?.length || 0;
+            return (
+              <div
+                key={template.id}
+                className="border-2 border-gray-200 rounded-lg p-6 hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group bg-white"
+                onClick={() => handleTemplateSelect(template.id)}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                    <svg
+                      className="text-white"
+                      width="32"
+                      height="32"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <path d="M3 9h18M9 21V9" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+                        {template.name}
+                      </h3>
+                      {template.isDefault && (
+                        <span className="flex-shrink-0 px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                          По умолчанию
+                        </span>
+                      )}
+                    </div>
+                    {template.description && (
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{template.description}</p>
+                    )}
+                    <div className="flex items-center gap-4 mt-3">
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        </svg>
+                        <span className="font-medium">{layoutCount}</span>
+                        <span>
+                          {layoutCount === 1
+                            ? 'макет'
+                            : layoutCount < 5
+                              ? 'макета'
+                              : 'макетов'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                   <svg
-                    className="text-white"
-                    width="32"
-                    height="32"
+                    className="flex-shrink-0 text-gray-400 group-hover:text-blue-600 transition-colors mt-1"
+                    width="20"
+                    height="20"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
                   >
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <path d="M3 9h18M9 21V9" />
+                    <path d="M9 18l6-6-6-6" />
                   </svg>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
-                    {template.name}
-                  </h3>
-                  {template.description && (
-                    <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-2">
-                    {template.layouts?.length || 0} макетов
-                  </p>
-                </div>
-                <svg
-                  className="text-gray-400 group-hover:text-blue-600 transition-colors"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12">

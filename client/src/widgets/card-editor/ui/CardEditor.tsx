@@ -85,11 +85,18 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
     // Сохранение истории
     const saveHistory = useCallback(() => {
       if (!fabricCanvasRef.current) return;
-      const json = fabricCanvasRef.current.toJSON();
-      setHistory((prev) => ({
-        undo: [...prev.undo, JSON.stringify(json)].slice(-50),
-        redo: [],
-      }));
+      try {
+        const json = fabricCanvasRef.current.toJSON();
+        setHistory((prev) => ({
+          undo: [...prev.undo, JSON.stringify(json)].slice(-50),
+          redo: [],
+        }));
+      } catch (error) {
+        // Логируем, но не роняем весь редактор, если Fabric не может сериализовать объект
+        // Это особенно важно для макетов, загруженных из сидов, где структура может отличаться
+        // eslint-disable-next-line no-console
+        console.error('Error saving canvas history:', error);
+      }
     }, []);
 
     // Обновление выбранного объекта

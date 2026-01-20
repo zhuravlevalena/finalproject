@@ -39,26 +39,19 @@ export default function LayoutEditorPage(): React.JSX.Element {
       if (!layout) return;
 
       // Создаем новую карточку на основе макета
-      const formData = new FormData();
-      formData.append('image', imageFile);
-      formData.append('title', `Карточка из макета: ${layout.name}`);
+      const cardData = {
+        title: `Карточка из макета: ${layout.name}`,
+        marketplaceId: layout.template?.marketplaceId,
+        templateId: layout.templateId,
+        canvasData: canvasData || undefined,
+        status: 'completed' as const,
+      };
 
-      if (layout.template?.marketplaceId) {
-        formData.append('marketplaceId', String(layout.template.marketplaceId));
-      }
+      const newCard = await productCardService.create(cardData, imageFile);
 
-      if (layout.templateId) {
-        formData.append('templateId', String(layout.templateId));
-      }
-
-      if (canvasData) {
-        formData.append('canvasData', JSON.stringify(canvasData));
-      }
-
-      const newCard = await productCardService.create(formData);
-
+      // Используем toast вместо alert (если есть toast система)
       // eslint-disable-next-line no-alert
-      alert('Карточка успешно создана!');
+      alert('Карточка успешно создана из макета! Теперь вы можете продолжить редактирование.');
       setLocation(`/edit-card/${newCard.id}`);
     } catch (err) {
       console.error('Error saving card:', err);
@@ -95,6 +88,47 @@ export default function LayoutEditorPage(): React.JSX.Element {
   const getCanvasSize = (): string => {
     // Формат 3:4 для всех маркетплейсов
     return '900x1200';
+  };
+
+  // Парсим canvasData и правильно структурируем для CardEditor
+  const getCanvasData = () => {
+    if (!layout.canvasData) return undefined;
+
+    try {
+      let parsedData: Record<string, unknown>;
+
+      // Если canvasData это строка - парсим её
+      if (typeof layout.canvasData === 'string') {
+        parsedData = JSON.parse(layout.canvasData);
+      } else {
+        parsedData = layout.canvasData as Record<string, unknown>;
+      }
+
+      // Структура из сидера: { version, objects }
+      // CardEditor ожидает: { fabric: { version, objects }, meta: {} }
+      // Если уже есть структура с fabric - используем её, иначе оборачиваем
+      if (parsedData.fabric) {
+        // Уже правильная структура
+        return parsedData as {
+          fabric?: Record<string, unknown>;
+          meta?: Record<string, unknown>;
+        };
+      } else {
+        // Оборачиваем в структуру fabric
+        return {
+          fabric: parsedData,
+          meta: {
+            cardSize: getCanvasSize(),
+            slideCount: 1,
+            source: 'layout',
+            layoutId: layout.id,
+          },
+        };
+      }
+    } catch (err) {
+      console.error('❌ Error parsing canvasData:', err);
+      return undefined;
+    }
   };
 
   return (
@@ -135,10 +169,7 @@ export default function LayoutEditorPage(): React.JSX.Element {
           cardSize={getCanvasSize()}
           slideCount={1}
           card={{
-            canvasData: layout.canvasData as {
-              fabric?: Record<string, unknown>;
-              meta?: Record<string, unknown>;
-            },
+            canvasData: getCanvasData(),
           }}
         />
       </div>

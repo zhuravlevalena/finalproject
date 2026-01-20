@@ -9,9 +9,10 @@ const marketplaceRouter = require('./routes/marketplace.route');
 const productCardRouter = require('./routes/productcard.route');
 const productProfileRouter = require('./routes/productprofile.route');
 const templateRouter = require('./routes/template.route');
+const layoutRouter = require('./routes/layout.route');
 const imageRouter = require('./routes/image.route');
 // const cardVersionRouter = require('./routes/card-version.route'); // TODO: Create this file if needed
-const aiRouter = require('./routes/ai.route')
+const aiRouter = require('./routes/ai.route');
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -44,10 +45,10 @@ app.use('/api/marketplaces', marketplaceRouter);
 app.use('/api/product-cards', productCardRouter);
 app.use('/api/product-profiles', productProfileRouter);
 app.use('/api/templates', templateRouter);
+app.use('/api/layouts', layoutRouter);
 app.use('/api/images', imageRouter);
 // app.use('/api/card-versions', cardVersionRouter); // TODO: Enable when route file is created
-app.use('/api/ai',aiRouter)
-
+app.use('/api/ai', aiRouter);
 
 app.use((err, req, res, next) => {
   console.log(err);

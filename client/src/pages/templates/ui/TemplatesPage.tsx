@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { fabric } from 'fabric';
 import { layoutService } from '@/entities/layout/api/layout.service';
 import type { LayoutSchema } from '@/entities/layout/model/layout.schemas';
 
@@ -9,6 +10,7 @@ export default function TemplatesPage(): React.JSX.Element {
   const [layouts, setLayouts] = useState<LayoutSchema[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [layoutPreviews, setLayoutPreviews] = useState<Map<number, string>>(new Map());
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -39,6 +41,70 @@ export default function TemplatesPage(): React.JSX.Element {
 
     void fetchLayouts();
   }, []);
+
+  // Рендерим превью для каждого макета из canvasData
+  useEffect(() => {
+    const renderPreviews = async (): Promise<void> => {
+      const previews = new Map<number, string>();
+
+      for (const layout of layouts) {
+        if (!layout.canvasData) continue;
+
+        try {
+          // Парсим canvasData
+          let canvasData: { version?: string; objects?: unknown[] } | null = null;
+          if (typeof layout.canvasData === 'string') {
+            canvasData = JSON.parse(layout.canvasData);
+          } else if (typeof layout.canvasData === 'object') {
+            canvasData = layout.canvasData as { version?: string; objects?: unknown[] };
+          }
+
+          if (!canvasData || !canvasData.objects) continue;
+
+          // Создаем временный canvas для рендеринга
+          const canvas = document.createElement('canvas');
+          canvas.width = 900;
+          canvas.height = 1200;
+
+          const fabricCanvas = new fabric.Canvas(canvas, {
+            width: 900,
+            height: 1200,
+            backgroundColor: '#ffffff',
+          });
+
+          // Загружаем данные из fabric JSON
+          await new Promise<void>((resolve, reject) => {
+            fabricCanvas.loadFromJSON(
+              canvasData,
+              () => {
+                fabricCanvas.renderAll();
+                resolve();
+              },
+              reject,
+            );
+          });
+
+          // Конвертируем в data URL для превью (уменьшенный размер)
+          const dataURL = fabricCanvas.toDataURL({
+            format: 'png',
+            quality: 0.8,
+            multiplier: 0.3, // Уменьшаем для превью
+          });
+
+          previews.set(layout.id, dataURL);
+          fabricCanvas.dispose();
+        } catch (err) {
+          console.error(`Error rendering preview for layout ${layout.id}:`, err);
+        }
+      }
+
+      setLayoutPreviews(previews);
+    };
+
+    if (layouts.length > 0) {
+      void renderPreviews();
+    }
+  }, [layouts]);
 
   const handleLayoutSelect = (layoutId: number): void => {
     setLocation(`/layout-editor/${layoutId}`);
@@ -103,8 +169,14 @@ export default function TemplatesPage(): React.JSX.Element {
               className="border-2 border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group"
               onClick={() => handleLayoutSelect(layout.id)}
             >
-              <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
-                {layout.preview ? (
+              <div className="aspect-[3/4] bg-gray-100 overflow-hidden relative">
+                {layoutPreviews.has(layout.id) ? (
+                  <img
+                    src={layoutPreviews.get(layout.id)!}
+                    alt={layout.name}
+                    className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform"
+                  />
+                ) : layout.preview ? (
                   <img
                     src={layout.preview}
                     alt={layout.name}
@@ -125,6 +197,11 @@ export default function TemplatesPage(): React.JSX.Element {
                       <circle cx="8.5" cy="8.5" r="1.5" />
                       <polyline points="21 15 16 10 5 21" />
                     </svg>
+                  </div>
+                )}
+                {!layoutPreviews.has(layout.id) && layout.canvasData && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100/50">
+                    <div className="text-xs text-gray-500">Загрузка превью...</div>
                   </div>
                 )}
               </div>
