@@ -21,11 +21,9 @@ export default function CreateCard(): React.JSX.Element {
 
   const [selectedMarketplace, setSelectedMarketplace] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
-  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [uploadedImageData, setUploadedImageData] = useState<{ id: number; url: string } | null>(
     null,
   );
-  const [backgroundImage, setBackgroundImage] = useState<File | null>(null);
   const [backgroundImageData, setBackgroundImageData] = useState<{
     id: number;
     url: string;
@@ -36,12 +34,9 @@ export default function CreateCard(): React.JSX.Element {
   const [slideCount, setSlideCount] = useState<SlideCount>(1);
   const [activeTab, setActiveTab] = useState<'settings' | 'images' | 'content'>('settings');
 
-  const { marketplaces, loading: marketplacesLoading } = useAppSelector(
-    (state) => state.marketplace,
-  );
+  const { marketplaces } = useAppSelector((state) => state.marketplace);
   const { templates, loading: templatesLoading } = useAppSelector((state) => state.template);
   const { uploading: isUploadingImage } = useAppSelector((state) => state.image);
-  const { creating: isCreatingCard } = useAppSelector((state) => state.productCard);
 
   useEffect(() => {
     void dispatch(fetchMarketplacesThunk());
@@ -59,7 +54,6 @@ export default function CreateCard(): React.JSX.Element {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setUploadedImage(file);
       const result = await dispatch(uploadImageThunk(file));
       if (uploadImageThunk.fulfilled.match(result)) {
         setUploadedImageData({ id: result.payload.id, url: result.payload.url });
@@ -70,7 +64,6 @@ export default function CreateCard(): React.JSX.Element {
   const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setBackgroundImage(file);
       const result = await dispatch(uploadImageThunk(file));
       if (uploadImageThunk.fulfilled.match(result)) {
         setBackgroundImageData({ id: result.payload.id, url: result.payload.url });
@@ -79,12 +72,10 @@ export default function CreateCard(): React.JSX.Element {
   };
 
   const handleRemoveImage = () => {
-    setUploadedImage(null);
     setUploadedImageData(null);
   };
 
   const handleRemoveBackground = () => {
-    setBackgroundImage(null);
     setBackgroundImageData(null);
   };
 
@@ -436,6 +427,9 @@ export default function CreateCard(): React.JSX.Element {
                     </button>
                   )}
                 </div>
+                {uploadedImageData && (
+                  <p className="text-sm text-green-600 mt-2">Изображение загружено</p>
+                )}
               </div>
             )}
           </Card>

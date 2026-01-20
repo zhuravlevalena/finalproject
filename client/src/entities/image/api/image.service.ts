@@ -23,4 +23,9 @@ export const imageService = {
   delete: async (id: number): Promise<void> => {
     await axiosInstance.delete(`/images/${id}`);
   },
+
+  generate: async (prompt: string): Promise<Image> => {
+    const response = await axiosInstance.post<Image>('/images/generate', { prompt });
+    return response.data;
+  },
 };
