@@ -25,8 +25,8 @@ function Layout({ children }: { children: React.ReactNode }): React.JSX.Element 
   return (
     <div
       className={`${
-        isAuthPage ? 'min-h-screen' : 'h-screen'
-      } bg-background flex flex-col font-body selection:bg-primary/30 selection:text-white overflow-hidden`}
+        isAuthPage ? 'min-h-[100dvh]' : 'min-h-[100dvh]'
+      } bg-background flex flex-col font-body selection:bg-primary/30 selection:text-white overflow-x-hidden`}
     >
       {!isAuthPage && <Navbar />}
       <main className={isAuthPage ? 'flex-grow' : 'flex-1 overflow-y-auto'}>{children}</main>

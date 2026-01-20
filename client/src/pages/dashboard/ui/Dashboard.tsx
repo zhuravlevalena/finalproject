@@ -28,14 +28,16 @@ export default function Dashboard(): React.JSX.Element {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <h1 className="text-3xl font-bold">Мои карточки</h1>
-        <Link href="/create-card">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Создать карточку
-          </Button>
-        </Link>
+        <div className="sm:shrink-0">
+          <Link href="/create-card">
+            <Button className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Создать карточку
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {cards.length === 0 ? (

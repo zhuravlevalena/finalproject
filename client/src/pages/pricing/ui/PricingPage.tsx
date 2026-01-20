@@ -133,7 +133,7 @@ function formatPrice(price: number, billing: BillingCycle): string {
 function formatCountdown(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  return `${String(m)}:${String(s).padStart(2, '0')}`;
 }
 
 function PaymentModal({
@@ -153,7 +153,7 @@ function PaymentModal({
   } | null>(null);
 
   React.useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return undefined;
     setSecondsLeft(9 * 60 + 44);
     setPhase('methods');
     setSelected(null);
@@ -161,16 +161,20 @@ function PaymentModal({
     const id = window.setInterval(() => {
       setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
     }, 1000);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+    };
   }, [isOpen]);
 
   React.useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
+    if (!isOpen) return undefined;
+    const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -182,12 +186,12 @@ function PaymentModal({
     { title: 'СБП', subtitle: 'Приложение вашего банка', badge: '⚡' },
   ];
 
-  const handlePay = (method: string) => {
+  const handlePay = (method: string): void => {
     setSelected(method);
     setPhase('processing');
     window.setTimeout(() => {
       setMockReceipt({
-        id: `PAY-${Math.floor(Math.random() * 900000 + 100000)}`,
+        id: `PAY-${String(Math.floor(Math.random() * 900000 + 100000))}`,
         amount: '1 390 ₽',
         method,
       });
@@ -200,7 +204,7 @@ function PaymentModal({
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-2xl rounded-2xl bg-[#12141a] border border-white/10 shadow-2xl overflow-hidden">
+        <div className="w-full max-w-2xl max-h-[90dvh] rounded-2xl bg-[#12141a] border border-white/10 shadow-2xl overflow-hidden flex flex-col">
           <div className="relative px-6 py-4 border-b border-white/10">
             <p className="text-center text-white/70">
               Завершите платёж в течение{' '}
@@ -215,7 +219,7 @@ function PaymentModal({
             </button>
           </div>
 
-          <div className="p-6 space-y-4">
+          <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
             {phase === 'methods' &&
               items.map((it) => (
                 <button
@@ -350,9 +354,9 @@ export default function PricingPage(): React.JSX.Element {
                 onClick={() => {
                   if (plan.id === 'demo') {
                     setLocation('/create-card');
-                    return;
+                  } else {
+                    setIsPaymentOpen(true);
                   }
-                  setIsPaymentOpen(true);
                 }}
               >
                 {plan.buttonLabel}
@@ -362,8 +366,13 @@ export default function PricingPage(): React.JSX.Element {
 
               <div className="space-y-3 text-sm">
                 <p className="font-semibold">{plan.downloads}</p>
-                {plan.sections.map((section, idx) => (
-                  <div key={`${plan.id}-${idx}`} className="space-y-2">
+                {plan.sections.map((section) => (
+                  <div
+                    key={`${plan.id}-${section.title ?? 'section'}-${section.items
+                      .map((i) => i.label)
+                      .join('|')}`}
+                    className="space-y-2"
+                  >
                     {section.title ? <p className="text-sm font-semibold">{section.title}</p> : null}
                     <ul className="space-y-1">
                       {section.items.map((item) => (

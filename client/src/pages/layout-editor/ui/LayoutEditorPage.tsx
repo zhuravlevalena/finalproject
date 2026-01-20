@@ -69,7 +69,7 @@ export default function LayoutEditorPage(): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <p className="text-gray-500 text-lg">Загрузка макета...</p>
       </div>
     );
@@ -77,7 +77,7 @@ export default function LayoutEditorPage(): React.JSX.Element {
 
   if (error || !layout) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 text-lg">{error || 'Макет не найден'}</p>
           <button
@@ -98,9 +98,9 @@ export default function LayoutEditorPage(): React.JSX.Element {
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="min-h-[100dvh] flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -119,7 +119,7 @@ export default function LayoutEditorPage(): React.JSX.Element {
               </svg>
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{layout.name}</h1>
+              <h1 className="text-xl font-bold text-gray-900 break-words">{layout.name}</h1>
               <p className="text-sm text-gray-600">
                 {layout.template?.marketplace?.name || 'Редактор макета'}
               </p>
