@@ -1,17 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
+import { useAppDispatch } from '@/shared/lib/hooks';
 import { productCardService } from '@/entities/productcard/api/productcard.service';
+import { deleteProductCardThunk } from '@/entities/productcard/model/productcard.thunk';
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2, AlertTriangle, X } from 'lucide-react';
 
 export default function EditCard(): React.JSX.Element {
   const [, params] = useRoute('/edit-card/:id');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   const cardId = params?.id ? Number(params.id) : null;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: card, isLoading } = useQuery({
     queryKey: ['productCard', cardId],
@@ -40,7 +45,6 @@ export default function EditCard(): React.JSX.Element {
   ) => {
     if (!cardId) return;
 
-    // ПРАВИЛЬНО: передаем объект с canvasData и imageFile
     updateCardMutation.mutate({
       canvasData: {
         fabric: canvasData?.fabric || null,
@@ -48,6 +52,29 @@ export default function EditCard(): React.JSX.Element {
       },
       imageFile,
     });
+  };
+
+  const handleDelete = async () => {
+    if (!cardId) return;
+
+    setIsDeleting(true);
+    try {
+      const result = await dispatch(deleteProductCardThunk(cardId));
+      if (deleteProductCardThunk.fulfilled.match(result)) {
+        queryClient.invalidateQueries({ queryKey: ['productCards'] });
+        setLocation('/dashboard');
+      } else {
+        // eslint-disable-next-line no-alert
+        alert('Ошибка при удалении карточки');
+      }
+    } catch (error) {
+      console.error('Error deleting card:', error);
+      // eslint-disable-next-line no-alert
+      alert('Ошибка при удалении карточки');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   if (isLoading) {
@@ -142,54 +169,112 @@ export default function EditCard(): React.JSX.Element {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Редактировать карточку</h1>
+    <div className="min-h-[100dvh] flex flex-col">
+      <div className="container mx-auto px-4 py-8 flex-1">
+        <h1 className="text-3xl font-bold mb-6">Редактировать карточку</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Редактор карточки</h2>
-            <CardEditor
-              card={cardForEditor}
-              onSave={handleSave}
-              initialImage={initialImage}
-              backgroundImage={backgroundImage}
-              cardSize={cardSize}
-              slideCount={slideCount}
-            />
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Редактор карточки</h2>
+              <CardEditor
+                card={cardForEditor}
+                onSave={handleSave}
+                initialImage={initialImage}
+                backgroundImage={backgroundImage}
+                cardSize={cardSize}
+                slideCount={slideCount}
+              />
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Информация</h2>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium">Маркетплейс</p>
+                  <p className="text-sm text-muted-foreground">
+                    {card.marketplace?.name || 'Не указан'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Шаблон</p>
+                  <p className="text-sm text-muted-foreground">
+                    {card.template?.name || 'Не указан'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Статус</p>
+                  <span
+                    className={`px-2 py-1 rounded text-xs ${
+                      card.status === 'completed'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {card.status === 'completed' ? 'Завершена' : 'Черновик'}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
+      </div>
 
-        <div className="space-y-6">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Информация</h2>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-medium">Маркетплейс</p>
-                <p className="text-sm text-muted-foreground">
-                  {card.marketplace?.name || 'Не указан'}
+      {/* Кнопка удаления внизу экрана */}
+      <div className="border-t border-gray-200 bg-white py-4 mt-auto sticky bottom-0 z-50">
+        <div className="container mx-auto px-4">
+          {!showDeleteConfirm ? (
+            <div className="flex justify-end">
+              <Button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white"
+              >
+                <Trash2 className="h-4 w-4" />
+                Удалить карточку товара
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 bg-red-50 border border-red-200 rounded-lg p-4">
+              <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-900">
+                  Вы уверены, что хотите удалить эту карточку?
+                </p>
+                <p className="text-xs text-red-700 mt-1">
+                  Это действие нельзя отменить. Карточка будет удалена безвозвратно.
                 </p>
               </div>
-              <div>
-                <p className="text-sm font-medium">Шаблон</p>
-                <p className="text-sm text-muted-foreground">
-                  {card.template?.name || 'Не указан'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium">Статус</p>
-                <span
-                  className={`px-2 py-1 rounded text-xs ${
-                    card.status === 'completed'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="border-gray-300"
                 >
-                  {card.status === 'completed' ? 'Завершена' : 'Черновик'}
-                </span>
+                  Отмена
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Удаление...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Удалить безвозвратно
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
-          </Card>
+          )}
         </div>
       </div>
     </div>

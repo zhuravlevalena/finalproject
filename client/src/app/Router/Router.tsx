@@ -16,6 +16,7 @@ import { useAppDispatch, useAppSelector } from '@/shared/lib/hooks';
 import { refreshThunk } from '@/entities/user/model/user.thunk';
 import EditCard from '@/pages/edit-card/EditCard';
 import VerifyEmail from '@/pages/verify-email/ui/VerifyEmail';
+import PricingPage from '@/pages/pricing/ui/PricingPage';
 
 function Layout({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [location] = useLocation();
@@ -24,8 +25,8 @@ function Layout({ children }: { children: React.ReactNode }): React.JSX.Element 
   return (
     <div
       className={`${
-        isAuthPage ? 'min-h-screen' : 'h-screen'
-      } bg-background flex flex-col font-body selection:bg-primary/30 selection:text-white overflow-hidden`}
+        isAuthPage ? 'min-h-[100dvh]' : 'min-h-[100dvh]'
+      } bg-background flex flex-col font-body selection:bg-primary/30 selection:text-white overflow-x-hidden`}
     >
       {!isAuthPage && <Navbar />}
       <main className={isAuthPage ? 'flex-grow' : 'flex-1 overflow-y-auto'}>{children}</main>
@@ -64,6 +65,7 @@ export default function Router(): React.JSX.Element {
         <Route path="/edit-card/:id">{isLogged ? <EditCard /> : <Login />}</Route>
         <Route path="/template-selection" component={TemplateSelectionPage} />
         <Route path="/templates" component={TemplatesPage} />
+        <Route path="/pricing" component={PricingPage} />
         <Route path="/layout-editor/:id">{isLogged ? <LayoutEditorPage /> : <Login />}</Route>
         <Route path="/verify-email" component={VerifyEmail} />
         <Route path="/login">{!isLogged ? <Login /> : null}</Route>
