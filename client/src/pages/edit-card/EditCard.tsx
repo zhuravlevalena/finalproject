@@ -146,8 +146,8 @@ export default function EditCard(): React.JSX.Element {
       imageFile?: File;
     }) => productCardService.update(cardId!, { canvasData }, imageFile),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['productCards'] });
-      queryClient.invalidateQueries({ queryKey: ['productCard', cardId] });
+      void queryClient.invalidateQueries({ queryKey: ['productCards'] });
+      void queryClient.invalidateQueries({ queryKey: ['productCard', cardId] });
       setLocation('/dashboard');
     },
   });
@@ -234,7 +234,7 @@ export default function EditCard(): React.JSX.Element {
     try {
       const result = await dispatch(deleteProductCardThunk(cardId));
       if (deleteProductCardThunk.fulfilled.match(result)) {
-        queryClient.invalidateQueries({ queryKey: ['productCards'] });
+       void queryClient.invalidateQueries({ queryKey: ['productCards'] });
         setLocation('/dashboard');
       } else {
         // eslint-disable-next-line no-alert
@@ -381,13 +381,13 @@ export default function EditCard(): React.JSX.Element {
                 <div>
                   <p className="text-sm font-medium">Маркетплейс</p>
                   <p className="text-sm text-muted-foreground">
-                    {card.marketplace?.name || 'Не указан'}
+                    {card.marketplace?.name ?? 'Не указан'}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">Шаблон</p>
                   <p className="text-sm text-muted-foreground">
-                    {card.template?.name || 'Не указан'}
+                    {card.template?.name ?? 'Не указан'}
                   </p>
                 </div>
                 <div>
@@ -414,7 +414,6 @@ export default function EditCard(): React.JSX.Element {
         </div>
       </div>
 
-      {/* Кнопка удаления внизу экрана */}
       <div className="border-t border-gray-200 bg-white py-4 mt-auto sticky bottom-0 z-50">
         <div className="container mx-auto px-4">
           {!showDeleteConfirm ? (

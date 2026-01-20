@@ -4,14 +4,11 @@ import type { Marketplace } from './marketplace.types';
 
 export const fetchMarketplacesThunk = createAsyncThunk(
   'marketplace/fetchAll',
-  async (): Promise<Marketplace[]> => {
-    return marketplaceService.getAll();
-  }
+  async (): Promise<Marketplace[]> => marketplaceService.getAll(),
 );
 
 export const fetchMarketplaceByIdThunk = createAsyncThunk(
   'marketplace/fetchById',
-  async (id: number): Promise<Marketplace> => {
-    return marketplaceService.getById(id);
-  }
+  async (id: number): Promise<Marketplace> => marketplaceService.getById(id), 
+
 );
