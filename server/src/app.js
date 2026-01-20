@@ -37,6 +37,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/img', express.static(path.join(__dirname, '../img')));
 
 app.use('/api/auth', authRouter);
 app.use('/api/marketplaces', marketplaceRouter);
