@@ -5,6 +5,7 @@ import NotFound from '@/pages/not-found/ui/NotFound';
 import Home from '@/pages/home/ui/Home';
 import Dashboard from '@/pages/dashboard/ui/Dashboard';
 import CreateCard from '@/pages/create-card/ui/CreateCard';
+import AICard from '@/pages/ai-card/ui/AICard';
 import Login from '@/pages/login/ui/LoginPage';
 import Register from '@/pages/register/ui/RegisterPage';
 import AuthCallback from '@/pages/auth-callback/ui/AuthCallback';
@@ -59,6 +60,7 @@ export default function Router(): React.JSX.Element {
         <Route path="/" component={Home} />
         <Route path="/dashboard">{isLogged ? <Dashboard /> : <Login />}</Route>
         <Route path="/create-card">{isLogged ? <CreateCard /> : <Login />}</Route>
+        <Route path="/ai-card">{isLogged ? <AICard /> : <Login />}</Route>
         <Route path="/edit-card/:id">{isLogged ? <EditCard /> : <Login />}</Route>
         <Route path="/template-selection" component={TemplateSelectionPage} />
         <Route path="/templates" component={TemplatesPage} />

@@ -66,12 +66,9 @@ export default function CreateCard(): React.JSX.Element {
     },
   ]);
 
-  const { marketplaces, loading: marketplacesLoading } = useAppSelector(
-    (state) => state.marketplace,
-  );
+  const { marketplaces } = useAppSelector((state) => state.marketplace);
   const { templates, loading: templatesLoading } = useAppSelector((state) => state.template);
   const { uploading: isUploadingImage } = useAppSelector((state) => state.image);
-  const { creating: isCreatingCard } = useAppSelector((state) => state.productCard);
 
   // Обновляем массив слайдов при изменении slideCount
   useEffect(() => {
