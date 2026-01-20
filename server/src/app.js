@@ -38,7 +38,21 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Middleware для CORS заголовков для статических файлов
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+app.use('/img', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 app.use('/img', express.static(path.join(__dirname, '../img')));
 
 app.use('/api/auth', authRouter);

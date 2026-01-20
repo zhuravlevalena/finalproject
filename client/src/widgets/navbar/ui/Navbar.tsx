@@ -3,12 +3,10 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@/shared/hooks/use-auth';
 import { Button } from '@/shared/ui/button';
 import { LogoutButton } from '@/features/auth/logout/ui/LogoutButton';
-import { TemplateSelectorModal } from '@/features/template-selector/ui/TemplateSelectorModal';
 
 export function Navbar(): React.JSX.Element {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -35,7 +33,7 @@ export function Navbar(): React.JSX.Element {
               <Button variant="ghost" onClick={() => setLocation('/ai-card')} className="cursor-pointer">
                 Карточка AI
               </Button>
-              <Button variant="ghost" onClick={() => setIsModalOpen(true)} className="cursor-pointer">
+              <Button variant="ghost" onClick={() => setLocation('/template-selection')} className="cursor-pointer">
                 Шаблоны
               </Button>
               <Button variant="ghost" onClick={() => setLocation('/pricing')} className="cursor-pointer">
@@ -108,7 +106,7 @@ export function Navbar(): React.JSX.Element {
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    setIsModalOpen(true);
+                    setLocation('/template-selection');
                     setIsMobileMenuOpen(false);
                   }}
                   className="justify-start"
@@ -166,8 +164,6 @@ export function Navbar(): React.JSX.Element {
           </div>
         </div>
       )}
-
-      <TemplateSelectorModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </nav>
   );
 }

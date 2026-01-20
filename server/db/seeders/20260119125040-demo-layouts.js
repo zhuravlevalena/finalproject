@@ -4,9 +4,11 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     const templates = await queryInterface.sequelize.query(
-      `SELECT id, name FROM "Templates" ORDER BY id;`,
+      `SELECT id, name, "isDefault" FROM "Templates" ORDER BY id;`,
       { type: Sequelize.QueryTypes.SELECT },
     );
+
+    console.log(`[Seeder] Found ${templates.length} templates:`, templates.map(t => ({ id: t.id, name: t.name })));
 
     if (templates.length === 0) {
       console.log('No templates found. Please seed templates first.');
@@ -16,300 +18,394 @@ module.exports = {
     const now = new Date();
     const layouts = [];
 
-    templates.forEach((template, index) => {
-      // Макет 1: Минималистичный
-      layouts.push({
-        name: 'Минималистичный',
-        description: 'Чистый дизайн с фокусом на продукт',
-        templateId: template.id,
-        canvasData: JSON.stringify({
-          version: '5.3.0',
-          objects: [
-            {
-              type: 'rect',
-              left: 0,
-              top: 0,
-              width: 900,
-              height: 1200,
-              fill: '#ffffff',
-              selectable: false,
-            },
-            {
-              type: 'textbox',
-              left: 50,
-              top: 50,
-              width: 800,
-              fontSize: 72,
-              fontFamily: 'Arial',
-              fontWeight: 'bold',
-              fill: '#000000',
-              text: 'НОВИНКА',
-              textAlign: 'center',
-            },
-            {
-              type: 'textbox',
-              left: 50,
-              top: 950,
-              width: 800,
-              fontSize: 48,
-              fontFamily: 'Arial',
-              fill: '#333333',
-              text: 'Название товара',
-              textAlign: 'center',
-            },
-            {
-              type: 'textbox',
-              left: 50,
-              top: 1050,
-              width: 800,
-              fontSize: 64,
-              fontFamily: 'Arial',
-              fontWeight: 'bold',
-              fill: '#e74c3c',
-              text: '1 999 ₽',
-              textAlign: 'center',
-            },
-          ],
-        }),
-        preview: `https://via.placeholder.com/600x800/ffffff/000000?text=Minimal+${
-          index + 1
-        }`,
-        isDefault: index === 0,
-        createdAt: now,
-        updatedAt: now,
-      });
+    templates.forEach((template) => {
+      console.log(
+        `[Seeder] Creating layouts for template ${template.id} (${template.name}), isDefault=${template.isDefault}`,
+      );
 
-
-      // Макет 2: Яркий акцент
-      layouts.push({
-        name: 'Яркий акцент',
-        description: 'Привлекающий внимание дизайн с цветными блоками',
-        templateId: template.id,
-        canvasData: JSON.stringify({
-          version: '5.3.0',
-          objects: [
-            {
-              type: 'rect',
-              left: 0,
-              top: 0,
-              width: 900,
-              height: 1200,
-              fill: '#f8f9fa',
-              selectable: false,
-            },
-            {
-              type: 'rect',
-              left: 0,
-              top: 0,
-              width: 900,
-              height: 200,
-              fill: '#3498db',
-              selectable: true,
-            },
-            {
-              type: 'textbox',
-              left: 50,
-              top: 50,
-              width: 800,
-              fontSize: 64,
-              fontFamily: 'Arial',
-              fontWeight: 'bold',
-              fill: '#ffffff',
-              text: 'СКИДКА -50%',
-              textAlign: 'center',
-            },
-            {
-              type: 'rect',
-              left: 0,
-              top: 1000,
-              width: 900,
-              height: 200,
-              fill: '#e74c3c',
-              selectable: true,
-            },
-            {
-              type: 'textbox',
-              left: 50,
-              top: 1050,
-              width: 800,
-              fontSize: 72,
-              fontFamily: 'Arial',
-              fontWeight: 'bold',
-              fill: '#ffffff',
-              text: '999 ₽',
-              textAlign: 'center',
-            },
-          ],
-        }),
-        preview: `https://via.placeholder.com/600x800/3498db/ffffff?text=Bright+${
-          index + 1
-        }`,
-        isDefault: false,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      // Макет 3: Премиум
-      layouts.push({
-        name: 'Премиум',
-        description: 'Элегантный дизайн для премиальных товаров',
-        templateId: template.id,
-        canvasData: JSON.stringify({
-          version: '5.3.0',
-          objects: [
-            {
-              type: 'rect',
-              left: 0,
-              top: 0,
-              width: 900,
-              height: 1200,
-              fill: '#2c3e50',
-              selectable: false,
-            },
-            {
-              type: 'rect',
-              left: 50,
-              top: 50,
-              width: 800,
-              height: 1100,
-              fill: 'transparent',
-              stroke: '#ecf0f1',
-              strokeWidth: 3,
-              selectable: true,
-            },
-            {
-              type: 'textbox',
-              left: 100,
-              top: 100,
-              width: 700,
-              fontSize: 56,
-              fontFamily: 'Georgia',
-              fontStyle: 'italic',
-              fill: '#ecf0f1',
-              text: 'Premium Quality',
-              textAlign: 'center',
-            },
-            {
-              type: 'textbox',
-              left: 100,
-              top: 950,
-              width: 700,
-              fontSize: 48,
-              fontFamily: 'Georgia',
-              fill: '#ecf0f1',
-              text: 'Название товара',
-              textAlign: 'center',
-            },
-            {
-              type: 'textbox',
-              left: 100,
-              top: 1050,
-              width: 700,
-              fontSize: 56,
-              fontFamily: 'Georgia',
-              fontWeight: 'bold',
-              fill: '#f39c12',
-              text: '4 999 ₽',
-              textAlign: 'center',
-            },
-          ],
-        }),
-        preview: `https://via.placeholder.com/600x800/2c3e50/ecf0f1?text=Premium+${
-          index + 1
-        }`,
-        isDefault: false,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      // Макет 4: Современный
-      layouts.push({
-        name: 'Современный',
-        description: 'Трендовый дизайн с градиентами',
-        templateId: template.id,
-        canvasData: JSON.stringify({
-          version: '5.3.0',
-          objects: [
-            {
-              type: 'rect',
-              left: 0,
-              top: 0,
-              width: 900,
-              height: 1200,
-              fill: '#ffffff',
-              selectable: false,
-            },
-            {
-              type: 'circle',
-              left: -100,
-              top: -100,
-              radius: 300,
-              fill: '#e8f4f8',
-              selectable: true,
-            },
-            {
-              type: 'circle',
-              left: 700,
-              top: 1000,
-              radius: 250,
-              fill: '#fef5e7',
-              selectable: true,
-            },
-            {
-              type: 'textbox',
-              left: 50,
-              top: 100,
-              width: 800,
-              fontSize: 80,
-              fontFamily: 'Arial',
-              fontWeight: 'bold',
-              fill: '#2c3e50',
-              text: 'ХИТ',
-              textAlign: 'center',
-            },
-            {
-              type: 'textbox',
-              left: 50,
-              top: 950,
-              width: 800,
-              fontSize: 44,
-              fontFamily: 'Arial',
-              fill: '#34495e',
-              text: 'Описание товара',
-              textAlign: 'center',
-            },
-            {
-              type: 'textbox',
-              left: 50,
-              top: 1050,
-              width: 800,
-              fontSize: 68,
-              fontFamily: 'Arial',
-              fontWeight: 'bold',
-              fill: '#16a085',
-              text: '2 499 ₽',
-              textAlign: 'center',
-            },
-          ],
-        }),
-        preview: `https://via.placeholder.com/600x800/e8f4f8/2c3e50?text=Modern+${
-          index + 1
-        }`,
-        isDefault: false,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      // Дополнительный макет: Минималистичный с акцентом на название товара (templateId === 1)
-      if (template.id === 1) {
+      if (template.isDefault) {
+        // 1. МАКЕТ: "TECH SPEC" (Технологичный акцент)
+        // Фокус на характеристиках с использованием линий-указателей
         layouts.push({
-          name: 'Минималистичный с акцентом на название товара',
-          description: 'Чистый дизайн с крупным названием товара',
+          name: 'Tech Spec Design',
+          description: 'Современный макет с выносками характеристик и геометричными формами',
           templateId: template.id,
           canvasData: JSON.stringify({
             version: '5.3.0',
             objects: [
-              // Фон
+              { type: 'rect', left: 0, top: 0, width: 900, height: 1200, fill: '#F4F7F6', selectable: false, evented: false },
+              // Декоративный элемент сзади
+              { type: 'rect', left: 450, top: 0, width: 450, height: 1200, fill: '#E8EDEB', selectable: false, evented: false },
+              // Вертикальный текст (Бренд или Категория)
+              { 
+                type: 'textbox', 
+                left: 820, 
+                top: 1150, 
+                width: 1100, 
+                fontSize: 140, 
+                fontFamily: 'Montserrat, Arial', 
+                fontWeight: '900', 
+                fill: '#000000', 
+                text: 'PREMIUM', 
+                textAlign: 'right', 
+                angle: -90, 
+                opacity: 0.05,
+                selectable: true,
+                evented: true
+              },
+              // Линия-выноска 1
+              { 
+                type: 'line', 
+                x1: 250, 
+                y1: 400, 
+                x2: 100, 
+                y2: 350, 
+                stroke: '#2D3436', 
+                strokeWidth: 2,
+                left: 100,
+                top: 350,
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 50, 
+                top: 310, 
+                width: 250, 
+                fontSize: 24, 
+                fontFamily: 'Arial', 
+                fontWeight: 'bold', 
+                fill: '#2D3436', 
+                text: 'ДЫШАЩИЙ\nМАТЕРИАЛ', 
+                textAlign: 'left',
+                selectable: true,
+                evented: true
+              },
+              // Линия-выноска 2
+              { 
+                type: 'line', 
+                x1: 650, 
+                y1: 800, 
+                x2: 800, 
+                y2: 850, 
+                stroke: '#2D3436', 
+                strokeWidth: 2,
+                left: 650,
+                top: 800,
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 600, 
+                top: 860, 
+                width: 250, 
+                fontSize: 24, 
+                fontFamily: 'Arial', 
+                fontWeight: 'bold', 
+                fill: '#2D3436', 
+                text: 'УСИЛЕННАЯ\nФИКСАЦИЯ', 
+                textAlign: 'right',
+                selectable: true,
+                evented: true
+              },
+              // Блок с размерами (информационный, не цена)
+              { 
+                type: 'rect', 
+                left: 50, 
+                top: 1080, 
+                width: 200, 
+                height: 60, 
+                fill: '#2D3436', 
+                rx: 10,
+                ry: 10,
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 50, 
+                top: 1095, 
+                width: 200, 
+                fontSize: 28, 
+                fontFamily: 'Arial', 
+                fontWeight: 'bold', 
+                fill: '#FFFFFF', 
+                text: '36 — 45', 
+                textAlign: 'center',
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 50, 
+                top: 1150, 
+                width: 200, 
+                fontSize: 18, 
+                fontFamily: 'Arial', 
+                fill: '#636E72', 
+                text: 'РАЗМЕРНЫЙ РЯД', 
+                textAlign: 'center', 
+                charSpacing: 100,
+                selectable: true,
+                evented: true
+              }
+            ]
+          }),
+          preview: `https://via.placeholder.com/600x800/F4F7F6/2D3436?text=Tech+Spec`,
+          isDefault: false, 
+          createdAt: now, 
+          updatedAt: now
+        });
+
+        // 2. МАКЕТ: "MINIMAL ELEGANCE" (Чистый стиль)
+        // Использование мягких теней (через прозрачность) и акцент на преимуществах
+        layouts.push({
+          name: 'Minimal Elegance',
+          description: 'Элегантный макет с акцентом на состав и комфорт',
+          templateId: template.id,
+          canvasData: JSON.stringify({
+            version: '5.3.0',
+            objects: [
+              { type: 'rect', left: 0, top: 0, width: 900, height: 1200, fill: '#FFFFFF', selectable: false, evented: false },
+              // Боковая плашка для преимуществ
+              { 
+                type: 'rect', 
+                left: 0, 
+                top: 0, 
+                width: 80, 
+                height: 1200, 
+                fill: '#2D3436',
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: -560, 
+                top: 40, 
+                width: 1200, 
+                fontSize: 20, 
+                fontFamily: 'Arial', 
+                fill: '#FFFFFF', 
+                text: 'QUALITY GUARANTEED • NATURAL MATERIALS • ERGONOMIC DESIGN', 
+                textAlign: 'center', 
+                angle: -90, 
+                charSpacing: 200,
+                selectable: true,
+                evented: true
+              },
+              // Основной заголовок характеристика
+              { 
+                type: 'textbox', 
+                left: 130, 
+                top: 80, 
+                width: 700, 
+                fontSize: 50, 
+                fontFamily: 'Georgia, serif', 
+                fontWeight: 'bold', 
+                fill: '#2D3436', 
+                text: 'АНАТОМИЧЕСКАЯ ФОРМА', 
+                textAlign: 'left',
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'rect', 
+                left: 130, 
+                top: 150, 
+                width: 100, 
+                height: 4, 
+                fill: '#2D3436',
+                selectable: true,
+                evented: true
+              },
+              // Иконки-характеристики (имитация)
+              { 
+                type: 'circle', 
+                left: 130, 
+                top: 950, 
+                radius: 40, 
+                fill: '#F2F2F2',
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 180, 
+                top: 965, 
+                width: 300, 
+                fontSize: 22, 
+                fontFamily: 'Arial', 
+                fontWeight: 'bold', 
+                fill: '#2D3436', 
+                text: 'ЛЕГКИЙ ВЕС (250г)', 
+                textAlign: 'left',
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'circle', 
+                left: 130, 
+                top: 1050, 
+                radius: 40, 
+                fill: '#F2F2F2',
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 180, 
+                top: 1065, 
+                width: 300, 
+                fontSize: 22, 
+                fontFamily: 'Arial', 
+                fontWeight: 'bold', 
+                fill: '#2D3436', 
+                text: 'ГИБКАЯ ПОДОШВА', 
+                textAlign: 'left',
+                selectable: true,
+                evented: true
+              }
+            ]
+          }),
+          preview: `https://via.placeholder.com/600x800/FFFFFF/2D3436?text=Minimal+Elegance`,
+          isDefault: false, 
+          createdAt: now, 
+          updatedAt: now
+        });
+
+        // 3. МАКЕТ: "MODERN GRID" (Сетка и блоки)
+        // Яркий, современный, разделенный на смысловые зоны
+        layouts.push({
+          name: 'Modern Grid',
+          description: 'Блочный дизайн для выделения ключевых особенностей',
+          templateId: template.id,
+          canvasData: JSON.stringify({
+            version: '5.3.0',
+            objects: [
+              { type: 'rect', left: 0, top: 0, width: 900, height: 1200, fill: '#1E272E', selectable: false, evented: false },
+              // Верхний блок для названия модели
+              { 
+                type: 'rect', 
+                left: 40, 
+                top: 40, 
+                width: 820, 
+                height: 120, 
+                fill: 'transparent', 
+                stroke: '#485460', 
+                strokeWidth: 1,
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 60, 
+                top: 75, 
+                width: 780, 
+                fontSize: 40, 
+                fontFamily: 'Impact, sans-serif', 
+                fill: '#FFFFFF', 
+                text: 'DAILY COMFORT SERIES', 
+                textAlign: 'center', 
+                charSpacing: 300,
+                selectable: true,
+                evented: true
+              },
+              // Инфо-плашки снизу
+              { 
+                type: 'rect', 
+                left: 40, 
+                top: 950, 
+                width: 390, 
+                height: 200, 
+                fill: '#485460', 
+                rx: 20,
+                ry: 20,
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 60, 
+                top: 980, 
+                width: 350, 
+                fontSize: 24, 
+                fontFamily: 'Arial', 
+                fontWeight: 'bold', 
+                fill: '#05C46B', 
+                text: 'МАТЕРИАЛЫ:', 
+                textAlign: 'left',
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 60, 
+                top: 1020, 
+                width: 350, 
+                fontSize: 20, 
+                fontFamily: 'Arial', 
+                fill: '#D2DAE2', 
+                text: '• Натуральная кожа\n• Эко-мех\n• Текстиль', 
+                textAlign: 'left',
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'rect', 
+                left: 470, 
+                top: 950, 
+                width: 390, 
+                height: 200, 
+                fill: '#485460', 
+                rx: 20,
+                ry: 20,
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 490, 
+                top: 980, 
+                width: 350, 
+                fontSize: 24, 
+                fontFamily: 'Arial', 
+                fontWeight: 'bold', 
+                fill: '#05C46B', 
+                text: 'СЕЗОН:', 
+                textAlign: 'left',
+                selectable: true,
+                evented: true
+              },
+              { 
+                type: 'textbox', 
+                left: 490, 
+                top: 1020, 
+                width: 350, 
+                fontSize: 20, 
+                fontFamily: 'Arial', 
+                fill: '#D2DAE2', 
+                text: 'Демисезон / Весна\nТемпературный режим\nот -5°C до +15°C', 
+                textAlign: 'left',
+                selectable: true,
+                evented: true
+              }
+            ]
+          }),
+          preview: `https://via.placeholder.com/600x800/1E272E/FFFFFF?text=Modern+Grid`,
+          isDefault: false, 
+          createdAt: now, 
+          updatedAt: now
+        });
+      } else {
+        // Категорийные макеты — по одному простому макету на каждую категорию
+        layouts.push({
+          name: `${template.name} — базовый макет`,
+          description: `Базовый макет для категории "${template.name}"`,
+          templateId: template.id,
+          canvasData: JSON.stringify({
+            version: '5.3.0',
+            objects: [
               {
                 type: 'rect',
                 left: 0,
@@ -320,87 +416,43 @@ module.exports = {
                 selectable: false,
                 evented: false,
               },
-              // Бейдж "ХИТ" в правом верхнем углу
-              {
-                type: 'rect',
-                left: 650,
-                top: 50,
-                width: 180,
-                height: 70,
-                rx: 14,
-                ry: 14,
-                fill: '#FF6B00',
-                selectable: true,
-                evented: true,
-              },
               {
                 type: 'textbox',
-                text: 'ХИТ',
-                left: 650,
-                top: 60,
-                width: 180,
-                fontSize: 36,
+                left: 50,
+                top: 80,
+                width: 800,
+                fontSize: 56,
                 fontFamily: 'Arial',
                 fontWeight: 'bold',
-                fill: '#ffffff',
+                fill: '#000000',
+                text: template.name,
                 textAlign: 'center',
                 selectable: true,
                 evented: true,
               },
-              // Область товара (изображение)
-              {
-                type: 'image',
-                left: 100,
-                top: 150,
-                width: 700,
-                height: 700,
-                src: '/uploads/istockphoto-1436061606-612x612.jpg',
-                originX: 'left',
-                originY: 'top',
-                scaleX: 1,
-                scaleY: 1,
-                selectable: true,
-                evented: true,
-              },
-              // Название модели
               {
                 type: 'textbox',
-                text: 'Название модели',
                 left: 50,
-                top: 900,
+                top: 950,
                 width: 800,
-                fontSize: 40,
+                fontSize: 48,
                 fontFamily: 'Arial',
-                fontWeight: 'normal',
-                fill: '#555555',
+                fill: '#333333',
+                text: 'Название товара',
                 textAlign: 'center',
-                selectable: true,
-                evented: true,
-              },
-              // Полупрозрачная плашка
-              {
-                type: 'rect',
-                left: 150,
-                top: 1060,
-                width: 600,
-                height: 80,
-                rx: 12,
-                ry: 12,
-                fill: '#00B23B',
-                opacity: 0.08,
                 selectable: true,
                 evented: true,
               },
               {
                 type: 'textbox',
-                text: 'Для комфортного бега',
-                left: 150,
-                top: 1080,
-                width: 600,
-                fontSize: 32,
+                left: 50,
+                top: 1050,
+                width: 800,
+                fontSize: 64,
                 fontFamily: 'Arial',
-                fontWeight: 'normal',
-                fill: '#1a1a1a',
+                fontWeight: 'bold',
+                fill: '#e74c3c',
+                text: '9 999 ₽',
                 textAlign: 'center',
                 selectable: true,
                 evented: true,
@@ -412,144 +464,19 @@ module.exports = {
           createdAt: now,
           updatedAt: now,
         });
-      
-        layouts.push({
-          name: 'Эстетичный спорт',
-          description: 'Минималистичный дизайн в пастельных тонах с выносками характеристик',
-          templateId: template.id,
-          canvasData: JSON.stringify({
-            version: '5.3.0',
-            objects: [
-              // Фон
-              {
-                type: 'rect',
-                left: 0,
-                top: 0,
-                width: 900,
-                height: 1200,
-                fill: '#F2E9F2',
-                selectable: false,
-              },
-              // Заголовок
-              {
-                type: 'textbox',
-                left: 50,
-                top: 80,
-                width: 800,
-                fontSize: 64,
-                fontFamily: 'Arial',
-                fontWeight: 'bold',
-                fill: '#FFFFFF',
-                text: 'КРОССОВКИ\nЖЕНСКИЕ',
-                textAlign: 'center',
-              },
-              // Область с товаром (изображение)
-              {
-                type: 'image',
-                left: 100,
-                top: 180,
-                width: 700,
-                height: 700,
-                src: '/uploads/istockphoto-1436061606-612x612.jpg',
-                originX: 'left',
-                originY: 'top',
-                scaleX: 1,
-                scaleY: 1,
-                selectable: true,
-                evented: true,
-              },
-              // Выноска 1
-              {
-                type: 'line',
-                x1: 380,
-                y1: 520,
-                x2: 250,
-                y2: 450,
-                stroke: '#FFFFFF',
-                strokeWidth: 2,
-              },
-              {
-                type: 'textbox',
-                left: 50,
-                top: 420,
-                width: 200,
-                fontSize: 22,
-                fontFamily: 'Arial',
-                fontStyle: 'italic',
-                fill: '#FFFFFF',
-                text: 'Дышащий текстиль',
-                textAlign: 'center',
-              },
-              // Выноска 2
-              {
-                type: 'line',
-                x1: 550,
-                y1: 750,
-                x2: 680,
-                y2: 820,
-                stroke: '#FFFFFF',
-                strokeWidth: 2,
-              },
-              {
-                type: 'textbox',
-                left: 650,
-                top: 810,
-                width: 220,
-                fontSize: 22,
-                fontFamily: 'Arial',
-                fontStyle: 'italic',
-                fill: '#FFFFFF',
-                text: 'Амортизация подошвы',
-                textAlign: 'center',
-              },
-              // Блок размерной сетки
-              {
-                type: 'rect',
-                left: 50,
-                top: 1050,
-                width: 160,
-                height: 80,
-                fill: '#4A4A4A',
-                rx: 20,
-                ry: 20,
-              },
-              {
-                type: 'textbox',
-                left: 60,
-                top: 1065,
-                width: 140,
-                fontSize: 32,
-                fontFamily: 'Arial',
-                fontWeight: 'bold',
-                fill: '#FFFFFF',
-                text: '36-45',
-                textAlign: 'center',
-              },
-              {
-                type: 'textbox',
-                left: 50,
-                top: 1140,
-                width: 160,
-                fontSize: 22,
-                fontFamily: 'Arial',
-                fill: '#4A4A4A',
-                text: 'размерная сетка',
-                textAlign: 'center',
-              },
-            ],
-          }),
-          preview: `https://via.placeholder.com/600x800/F2E9F2/4A4A4A?text=Sneaker+Card+${index + 1}`,
-          isDefault: index === 0,
-          createdAt: now,
-          updatedAt: now,
-        });
       }
     });
 
-    await queryInterface.bulkInsert('Layouts', layouts, {});
+    console.log(`[Seeder] Creating ${layouts.length} layouts for ${templates.length} templates`);
+    if (layouts.length > 0) {
+      await queryInterface.bulkInsert('Layouts', layouts, {});
+      console.log(`[Seeder] Successfully created ${layouts.length} layouts`);
+    } else {
+      console.log('[Seeder] No layouts to create!');
+    }
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface) {
     await queryInterface.bulkDelete('Layouts', null, {});
   },
 };
