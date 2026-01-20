@@ -23,20 +23,17 @@ import { CardEditor, type CardEditorRef } from '@/widgets/card-editor/ui/CardEdi
 type CardSize = '800x600' | '1024x768' | '1200x900' | '1920x1080';
 type SlideCount = 1 | 2 | 3 | 4 | 5;
 
-// Маппинг размеров карточек для каждого маркетплейса
 const marketplaceCardSizes: Record<string, CardSize[]> = {
   wildberries: ['800x600', '1024x768', '1200x900'],
   ozon: ['1024x768', '1200x900', '1920x1080'],
   'yandex-market': ['800x600', '1024x768', '1200x900', '1920x1080'],
 };
 
-// Функция для получения доступных размеров по маркетплейсу
 const getAvailableSizes = (marketplaceSlug: string | null): CardSize[] => {
   if (!marketplaceSlug) return [];
-  return marketplaceCardSizes[marketplaceSlug] || ['1024x768'];
+  return marketplaceCardSizes[marketplaceSlug] ?? ['1024x768'];
 };
 
-// Тип для данных слайда
 type SlideData = {
   canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> };
   uploadedImage?: { id: number; url: string } | null;
@@ -57,7 +54,7 @@ export default function CreateCard(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<'settings' | 'images'>('settings');
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
-  // Массив данных для каждого слайда
+
   const [slides, setSlides] = useState<SlideData[]>([
     {
       canvasData: undefined,
@@ -70,7 +67,7 @@ export default function CreateCard(): React.JSX.Element {
   const { templates, loading: templatesLoading } = useAppSelector((state) => state.template);
   const { uploading: isUploadingImage } = useAppSelector((state) => state.image);
 
-  // Обновляем массив слайдов при изменении slideCount
+
   useEffect(() => {
     setSlides((prev) => {
       const newSlides = [...prev];
@@ -86,7 +83,7 @@ export default function CreateCard(): React.JSX.Element {
       }
       return newSlides;
     });
-    // Если текущий слайд больше количества слайдов, переключаемся на последний
+   
     if (currentSlideIndex >= slideCount) {
       setCurrentSlideIndex(Math.max(0, slideCount - 1));
     }
@@ -105,7 +102,7 @@ export default function CreateCard(): React.JSX.Element {
     }
   }, [dispatch, selectedMarketplace]);
 
-  // Функция для сохранения текущего состояния canvas перед переключением слайда
+  
   const saveCurrentSlideCanvas = () => {
     if (!cardEditorRef.current?.getCanvasData) return;
 
@@ -116,8 +113,8 @@ export default function CreateCard(): React.JSX.Element {
         newSlides[currentSlideIndex] = {
           ...newSlides[currentSlideIndex],
           canvasData: {
-            fabric: canvasData.fabric || null,
-            meta: canvasData.meta || {},
+            fabric: canvasData.fabric ?? null,
+            meta: canvasData.meta ?? {},
           },
         };
         return newSlides;
@@ -125,14 +122,14 @@ export default function CreateCard(): React.JSX.Element {
     }
   };
 
-  // Обработчик переключения слайда
+ 
   const handleSlideChange = (newIndex: number) => {
     if (newIndex === currentSlideIndex) return;
 
-    // Сохраняем текущий слайд перед переключением
+   
     saveCurrentSlideCanvas();
 
-    // Переключаемся на новый слайд
+    
     setCurrentSlideIndex(newIndex);
   };
 
@@ -198,11 +195,11 @@ export default function CreateCard(): React.JSX.Element {
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
   ) => {
-    // Сохраняем данные текущего слайда перед сохранением
+   
     const updatedSlides = [...slides];
     updatedSlides[currentSlideIndex] = {
       ...updatedSlides[currentSlideIndex],
-      canvasData: canvasData || updatedSlides[currentSlideIndex].canvasData,
+      canvasData: canvasData ?? updatedSlides[currentSlideIndex].canvasData,
     };
     setSlides(updatedSlides);
 
@@ -214,31 +211,30 @@ export default function CreateCard(): React.JSX.Element {
       }
     }
 
-    // Создаем массив всех слайдов с их данными
     const slidesData = updatedSlides.map((slide, index) => ({
-      canvasData: slide.canvasData || { fabric: null, meta: {} },
+      canvasData: slide.canvasData ?? { fabric: null, meta: {} },
       imageId: slide.uploadedImage?.id,
       backgroundImageId: slide.backgroundImage?.id,
       slideIndex: index,
     }));
 
     const cardData: CreateProductCardDto = {
-      marketplaceId: selectedMarketplace || undefined,
-      templateId: selectedTemplate || undefined,
+      marketplaceId: selectedMarketplace ?? undefined,
+      templateId: selectedTemplate ?? undefined,
       productProfileId: profileId,
-      imageId: updatedSlides[0]?.uploadedImage?.id, // Основное изображение - первый слайд
+      imageId: updatedSlides[0]?.uploadedImage?.id, 
       canvasData: {
-        fabric: null, // Будет храниться в slides
+        fabric: null, 
         meta: {
           slideCount,
           cardSize,
-          slides: slidesData, // Массив всех слайдов
+          slides: slidesData, 
         },
       },
       status: 'completed',
     };
 
-    // Сохраняем первый слайд как основное изображение
+  
     const result = await dispatch(createProductCardThunk({ data: cardData, imageFile }));
     if (createProductCardThunk.fulfilled.match(result)) {
       setTimeout(() => {
@@ -266,10 +262,8 @@ export default function CreateCard(): React.JSX.Element {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Редактор - занимает 3 колонки */}
         <div className="lg:col-span-3">
           <Card className="p-6">
-            {/* Переключатель слайдов */}
             {slideCount > 1 && (
               <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-gray-50 p-3 rounded-lg">
                 <button
@@ -310,13 +304,12 @@ export default function CreateCard(): React.JSX.Element {
               </div>
             )}
 
-            {/* CardEditor с key для пересоздания при смене слайда */}
             <CardEditor
-              key={`slide-${currentSlideIndex}-${cardSize}`} // Пересоздаем при смене слайда или размера
+              key={`slide-${currentSlideIndex}-${cardSize}`} 
               ref={cardEditorRef}
               onSave={handleSave}
-              initialImage={currentSlide.uploadedImage || undefined}
-              backgroundImage={currentSlide.backgroundImage || undefined}
+              initialImage={currentSlide.uploadedImage ?? undefined}
+              backgroundImage={currentSlide.backgroundImage ?? undefined}
               cardSize={cardSize}
               slideCount={slideCount}
               card={currentSlide.canvasData ? { canvasData: currentSlide.canvasData } : undefined}
@@ -324,10 +317,8 @@ export default function CreateCard(): React.JSX.Element {
           </Card>
         </div>
 
-        {/* Боковая панель настроек - 1 колонка */}
         <div className="space-y-4">
           <Card className="p-4">
-            {/* Табы */}
             <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('settings')}
@@ -355,7 +346,6 @@ export default function CreateCard(): React.JSX.Element {
               </button>
             </div>
 
-            {/* Контент табов */}
             {activeTab === 'settings' && (
               <div className="space-y-4">
                 <div>
@@ -363,13 +353,13 @@ export default function CreateCard(): React.JSX.Element {
                     Маркетплейс
                   </label>
                   <select
-                    value={selectedMarketplace || ''}
+                    value={selectedMarketplace ?? ''}
                     onChange={(e) => {
                       const marketplaceId = e.target.value ? Number(e.target.value) : null;
                       setSelectedMarketplace(marketplaceId);
 
                       const marketplace = marketplaces?.find((mp) => mp.id === marketplaceId);
-                      const slug = marketplace?.slug || null;
+                      const slug = marketplace?.slug ?? null;
                       setSelectedMarketplaceSlug(slug);
 
                       if (slug) {
@@ -397,7 +387,7 @@ export default function CreateCard(): React.JSX.Element {
                       <div className="text-sm text-muted-foreground">Загрузка шаблонов...</div>
                     ) : (
                       <select
-                        value={selectedTemplate || ''}
+                        value={selectedTemplate ?? ''}
                         onChange={(e) =>
                           setSelectedTemplate(e.target.value ? Number(e.target.value) : null)
                         }
@@ -457,7 +447,7 @@ export default function CreateCard(): React.JSX.Element {
                   <select
                     value={slideCount}
                     onChange={(e) => {
-                      // Сохраняем текущий слайд перед изменением количества
+      
                       saveCurrentSlideCanvas();
                       const newCount = Number(e.target.value) as SlideCount;
                       setSlideCount(newCount);
