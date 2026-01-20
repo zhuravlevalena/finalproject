@@ -72,9 +72,23 @@ export default function AICard(): React.JSX.Element {
           )}
 
           {response && (
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
               <h3 className="text-sm font-medium text-green-800 mb-2">Результат:</h3>
-              <div className="text-sm text-green-700 whitespace-pre-wrap">{response}</div>
+              {/* Если пришёл URL картинки (/img/...), показываем изображение */}
+              {typeof response === 'string' && response.startsWith('/img/') ? (
+                <div className="flex flex-col items-center gap-2">
+                  <img
+                    src={response}
+                    alt="Сгенерированное изображение"
+                    className="max-h-96 w-auto rounded shadow-md bg-white"
+                  />
+                  <p className="text-xs text-gray-500 break-all">
+                    URL: {response}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-sm text-green-700 whitespace-pre-wrap">{response}</div>
+              )}
             </div>
           )}
           
