@@ -1,9 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
@@ -32,11 +29,11 @@ export default {
         border: 'hsl(var(--border))',
       },
       fontFamily: {
-        body: ['system-ui', '-apple-system', 'sans-serif'],
-        display: ['system-ui', '-apple-system', 'sans-serif'],
+        body: ['Avdira', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Avdira', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Avdira', 'system-ui', '-apple-system', 'sans-serif'],
       },
     },
   },
   plugins: [],
-}
-
+};
