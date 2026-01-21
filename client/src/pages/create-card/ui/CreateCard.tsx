@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
 import { fetchMarketplacesThunk } from '@/entities/marketplace/model/marketplace.thunk';
 import { fetchTemplatesThunk } from '@/entities/template/model/template.thunk';
@@ -16,6 +17,9 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Sparkles,
+  Palette,
+  Layers,
 } from 'lucide-react';
 import type { CreateProductCardDto } from '@/entities/productcard/model/productcard.types';
 import { CardEditor, type CardEditorRef } from '@/widgets/card-editor/ui/CardEditor';
@@ -86,7 +90,6 @@ export default function CreateCard(): React.JSX.Element {
       }
       return newSlides;
     });
-    // Если текущий слайд больше количества слайдов, переключаемся на последний
     if (currentSlideIndex >= slideCount) {
       setCurrentSlideIndex(Math.max(0, slideCount - 1));
     }
@@ -128,11 +131,7 @@ export default function CreateCard(): React.JSX.Element {
   // Обработчик переключения слайда
   const handleSlideChange = (newIndex: number) => {
     if (newIndex === currentSlideIndex) return;
-
-    // Сохраняем текущий слайд перед переключением
     saveCurrentSlideCanvas();
-
-    // Переключаемся на новый слайд
     setCurrentSlideIndex(newIndex);
   };
 
@@ -198,7 +197,6 @@ export default function CreateCard(): React.JSX.Element {
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
   ) => {
-    // Сохраняем данные текущего слайда перед сохранением
     const updatedSlides = [...slides];
     updatedSlides[currentSlideIndex] = {
       ...updatedSlides[currentSlideIndex],
@@ -226,19 +224,18 @@ export default function CreateCard(): React.JSX.Element {
       marketplaceId: selectedMarketplace || undefined,
       templateId: selectedTemplate || undefined,
       productProfileId: profileId,
-      imageId: updatedSlides[0]?.uploadedImage?.id, // Основное изображение - первый слайд
+      imageId: updatedSlides[0]?.uploadedImage?.id,
       canvasData: {
-        fabric: null, // Будет храниться в slides
+        fabric: null,
         meta: {
           slideCount,
           cardSize,
-          slides: slidesData, // Массив всех слайдов
+          slides: slidesData,
         },
       },
       status: 'completed',
     };
 
-    // Сохраняем первый слайд как основное изображение
     const result = await dispatch(createProductCardThunk({ data: cardData, imageFile }));
     if (createProductCardThunk.fulfilled.match(result)) {
       setTimeout(() => {
@@ -258,40 +255,72 @@ export default function CreateCard(): React.JSX.Element {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Создать карточку товара</h1>
-        <p className="text-gray-600">
+      {/* Заголовок с анимацией */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mb-8"
+      >
+        <div className="flex items-center gap-4 mb-3">
+          <motion.img
+            src="/111.png"
+            alt="Cardify"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="h-16 w-16 md:h-20 md:w-20 object-contain"
+          />
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Создать карточку товара
+          </h1>
+        </div>
+        <p className="text-gray-600 text-lg flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-purple-500" />
           Создайте привлекательную карточку товара с помощью нашего редактора
         </p>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Редактор - занимает 3 колонки */}
-        <div className="lg:col-span-3">
-          <Card className="p-6">
+        {/* Редактор */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="lg:col-span-3"
+        >
+          <Card className="p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-200/50 shadow-xl hover:shadow-2xl transition-all duration-300">
             {/* Переключатель слайдов */}
             {slideCount > 1 && (
-              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-gray-50 p-3 rounded-lg">
-                <button
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-200/50 shadow-sm"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleSlideChange(Math.max(0, currentSlideIndex - 1))}
                   disabled={currentSlideIndex === 0}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-300 rounded-lg hover:bg-blue-50 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm font-medium"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   <span className="text-sm">Предыдущий</span>
-                </button>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">
+                </motion.button>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-gray-700 bg-white px-3 py-1.5 rounded-lg shadow-sm">
                     Слайд {currentSlideIndex + 1} из {slideCount}
                   </span>
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                     {slides.map((_, index) => (
-                      <button
+                      <motion.button
                         key={index}
+                        whileHover={{ scale: 1.2 }}
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => handleSlideChange(index)}
-                        className={`w-2 h-2 rounded-full transition-colors ${
+                        className={`w-3 h-3 rounded-full transition-all ${
                           index === currentSlideIndex
-                            ? 'bg-blue-600'
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg scale-125'
                             : 'bg-gray-300 hover:bg-gray-400'
                         }`}
                         title={`Слайд ${index + 1}`}
@@ -299,20 +328,22 @@ export default function CreateCard(): React.JSX.Element {
                     ))}
                   </div>
                 </div>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleSlideChange(Math.min(slideCount - 1, currentSlideIndex + 1))}
                   disabled={currentSlideIndex === slideCount - 1}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-300 rounded-lg hover:bg-blue-50 hover:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm font-medium"
                 >
                   <span className="text-sm">Следующий</span>
                   <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             )}
 
             {/* CardEditor с key для пересоздания при смене слайда */}
             <CardEditor
-              key={`slide-${currentSlideIndex}-${cardSize}`} // Пересоздаем при смене слайда или размера
+              key={`slide-${currentSlideIndex}-${cardSize}`}
               ref={cardEditorRef}
               onSave={handleSave}
               initialImage={currentSlide.uploadedImage || undefined}
@@ -322,275 +353,328 @@ export default function CreateCard(): React.JSX.Element {
               card={currentSlide.canvasData ? { canvasData: currentSlide.canvasData } : undefined}
             />
           </Card>
-        </div>
+        </motion.div>
 
-        {/* Боковая панель настроек - 1 колонка */}
-        <div className="space-y-4">
-          <Card className="p-4">
+        {/* Боковая панель */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="space-y-4"
+        >
+          <Card className="p-5 bg-white/80 backdrop-blur-sm border-2 border-gray-200/50 shadow-xl">
             {/* Табы */}
-            <div className="flex gap-1 mb-4 border-b border-gray-200 overflow-x-auto">
-              <button
+            <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveTab('settings')}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${
-                  activeTab === 'settings' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
+                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all rounded-lg relative flex-1 whitespace-nowrap ${
+                  activeTab === 'settings'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white'
                 }`}
               >
-                <Settings className="h-4 w-4 flex-shrink-0" />
+                <Settings className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>Настройки</span>
-                {activeTab === 'settings' && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-                )}
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveTab('images')}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors relative whitespace-nowrap flex-shrink-0 ${
-                  activeTab === 'images' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
+                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all rounded-lg relative flex-1 whitespace-nowrap ${
+                  activeTab === 'images'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white'
                 }`}
               >
-                <ImageIcon className="h-4 w-4 flex-shrink-0" />
+                <ImageIcon className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>Изображения</span>
-                {activeTab === 'images' && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
-                )}
-              </button>
+              </motion.button>
             </div>
 
             {/* Контент табов */}
-            {activeTab === 'settings' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Маркетплейс
-                  </label>
-                  <select
-                    value={selectedMarketplace || ''}
-                    onChange={(e) => {
-                      const marketplaceId = e.target.value ? Number(e.target.value) : null;
-                      setSelectedMarketplace(marketplaceId);
-
-                      const marketplace = marketplaces?.find((mp) => mp.id === marketplaceId);
-                      const slug = marketplace?.slug || null;
-                      setSelectedMarketplaceSlug(slug);
-
-                      if (slug) {
-                        const availableSizes = getAvailableSizes(slug);
-                        if (availableSizes.length > 0) {
-                          setCardSize(availableSizes[0]);
-                        }
-                      }
-                    }}
-                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  >
-                    <option value="">Выберите маркетплейс</option>
-                    {marketplaces?.map((mp) => (
-                      <option key={mp.id} value={mp.id}>
-                        {mp.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedMarketplace && templates && (
+            <AnimatePresence mode="wait">
+              {activeTab === 'settings' && (
+                <motion.div
+                  key="settings"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-5"
+                >
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-700">Шаблон</label>
-                    {templatesLoading ? (
-                      <div className="text-sm text-muted-foreground">Загрузка шаблонов...</div>
-                    ) : (
-                      <select
-                        value={selectedTemplate || ''}
-                        onChange={(e) =>
-                          setSelectedTemplate(e.target.value ? Number(e.target.value) : null)
-                        }
-                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      >
-                        <option value="">Выберите шаблон</option>
-                        {templates.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">Тип товара</label>
-                  <input
-                    type="text"
-                    value={productType}
-                    onChange={(e) => setProductType(e.target.value)}
-                    placeholder="Например: одежда, электроника..."
-                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
-                </div>
-
-                {selectedMarketplace && selectedMarketplaceSlug && (
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-700">
-                      Размер карточки
+                    <label className="block text-sm font-semibold mb-2.5 text-gray-700 flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-blue-500" />
+                      Маркетплейс
                     </label>
                     <select
-                      value={cardSize}
-                      onChange={(e) => setCardSize(e.target.value as CardSize)}
-                      className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      value={selectedMarketplace || ''}
+                      onChange={(e) => {
+                        const marketplaceId = e.target.value ? Number(e.target.value) : null;
+                        setSelectedMarketplace(marketplaceId);
+                        const marketplace = marketplaces?.find((mp) => mp.id === marketplaceId);
+                        const slug = marketplace?.slug || null;
+                        setSelectedMarketplaceSlug(slug);
+                        if (slug) {
+                          const availableSizes = getAvailableSizes(slug);
+                          if (availableSizes.length > 0) {
+                            setCardSize(availableSizes[0]);
+                          }
+                        }
+                      }}
+                      className="w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white shadow-sm hover:shadow-md"
                     >
-                      {getAvailableSizes(selectedMarketplaceSlug).map((size) => {
-                        const option = sizeOptions.find((opt) => opt.value === size);
-                        return option ? (
-                          <option key={option.value} value={option.value}>
-                            {option.label} - {option.description}
-                          </option>
-                        ) : null;
-                      })}
+                      <option value="">Выберите маркетплейс</option>
+                      {marketplaces?.map((mp) => (
+                        <option key={mp.id} value={mp.id}>
+                          {mp.name}
+                        </option>
+                      ))}
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Размеры соответствуют требованиям выбранного маркетплейса
+                  </div>
+
+                  {selectedMarketplace && templates && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <label className="block text-sm font-semibold mb-2.5 text-gray-700 flex items-center gap-2">
+                        <Palette className="h-4 w-4 text-purple-500" />
+                        Шаблон
+                      </label>
+                      {templatesLoading ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500 p-3">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Загрузка шаблонов...
+                        </div>
+                      ) : (
+                        <select
+                          value={selectedTemplate || ''}
+                          onChange={(e) =>
+                            setSelectedTemplate(e.target.value ? Number(e.target.value) : null)
+                          }
+                          className="w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all bg-white shadow-sm hover:shadow-md"
+                        >
+                          <option value="">Выберите шаблон</option>
+                          {templates.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </motion.div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-semibold mb-2.5 text-gray-700">
+                      Тип товара
+                    </label>
+                    <input
+                      type="text"
+                      value={productType}
+                      onChange={(e) => setProductType(e.target.value)}
+                      placeholder="Например: одежда, электроника..."
+                      className="w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white shadow-sm hover:shadow-md"
+                    />
+                  </div>
+
+                  {selectedMarketplace && selectedMarketplaceSlug && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <label className="block text-sm font-semibold mb-2.5 text-gray-700">
+                        Размер карточки
+                      </label>
+                      <select
+                        value={cardSize}
+                        onChange={(e) => setCardSize(e.target.value as CardSize)}
+                        className="w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white shadow-sm hover:shadow-md"
+                      >
+                        {getAvailableSizes(selectedMarketplaceSlug).map((size) => {
+                          const option = sizeOptions.find((opt) => opt.value === size);
+                          return option ? (
+                            <option key={option.value} value={option.value}>
+                              {option.label} - {option.description}
+                            </option>
+                          ) : null;
+                        })}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                        Размеры соответствуют требованиям маркетплейса
+                      </p>
+                    </motion.div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-semibold mb-2.5 text-gray-700">
+                      Количество слайдов
+                    </label>
+                    <select
+                      value={slideCount}
+                      onChange={(e) => {
+                        saveCurrentSlideCanvas();
+                        const newCount = Number(e.target.value) as SlideCount;
+                        setSlideCount(newCount);
+                      }}
+                      className="w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white shadow-sm hover:shadow-md"
+                    >
+                      {[1, 2, 3, 4, 5].map((count) => (
+                        <option key={count} value={count}>
+                          {count} {count === 1 ? 'слайд' : count < 5 ? 'слайда' : 'слайдов'}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
+                      Создайте несколько слайдов для одной карточки
                     </p>
                   </div>
-                )}
+                </motion.div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Количество слайдов
-                  </label>
-                  <select
-                    value={slideCount}
-                    onChange={(e) => {
-                      // Сохраняем текущий слайд перед изменением количества
-                      saveCurrentSlideCanvas();
-                      const newCount = Number(e.target.value) as SlideCount;
-                      setSlideCount(newCount);
-                    }}
-                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  >
-                    {[1, 2, 3, 4, 5].map((count) => (
-                      <option key={count} value={count}>
-                        {count} {count === 1 ? 'слайд' : count < 5 ? 'слайда' : 'слайдов'}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Вы можете создать несколько слайдов для одной карточки
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'images' && (
-              <div className="space-y-6">
-                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm text-blue-700 font-medium">
-                    Изображения для слайда {currentSlideIndex + 1}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Основное изображение
-                  </label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Изображение будет добавлено на canvas как объект, который можно перемещать и
-                    редактировать
-                  </p>
-                  <div className="space-y-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label
-                      htmlFor="image-upload"
-                      className="flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-lg cursor-pointer hover:bg-primary/90 transition-colors shadow-sm"
-                    >
-                      <Upload className="h-4 w-4" />
-                      Загрузить изображение
-                    </label>
-                    {isUploadingImage && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600 py-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Загрузка...
-                      </div>
-                    )}
-                    {currentSlide.uploadedImage && (
-                      <div className="mt-3 p-4 bg-green-50 rounded-lg border border-green-200 relative">
-                        <button
-                          onClick={handleRemoveImage}
-                          className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-sm hover:bg-gray-100 transition-colors"
-                          title="Удалить изображение"
-                        >
-                          <X className="h-3 w-3 text-gray-600" />
-                        </button>
-                        <p className="text-sm text-green-700 font-medium mb-2">
-                          ✓ Изображение загружено
-                        </p>
-                        <img
-                          src={currentSlide.uploadedImage.url}
-                          alt="Preview"
-                          className="w-full h-48 object-contain rounded"
-                        />
-                      </div>
-                    )}
+              {activeTab === 'images' && (
+                <motion.div
+                  key="images"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-6"
+                >
+                  <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200/50">
+                    <p className="text-sm text-blue-700 font-semibold flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Изображения для слайда {currentSlideIndex + 1}
+                    </p>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Фон карточки
-                  </label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Фон будет установлен как фоновое изображение. Поверх него можно добавлять текст
-                    и другие элементы
-                  </p>
-                  <div className="space-y-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleBackgroundUpload}
-                      className="hidden"
-                      id="background-upload"
-                    />
-                    <label
-                      htmlFor="background-upload"
-                      className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg cursor-pointer hover:bg-blue-600 transition-colors shadow-sm"
-                    >
-                      <ImageIcon className="h-4 w-4" />
-                      Выбрать фон
+                  <div>
+                    <label className="block text-sm font-semibold mb-2.5 text-gray-700">
+                      Основное изображение
                     </label>
-                    {isUploadingImage && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600 py-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Загрузка...
-                      </div>
-                    )}
-                    {currentSlide.backgroundImage && (
-                      <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200 relative">
-                        <button
-                          onClick={handleRemoveBackground}
-                          className="absolute top-2 right-2 p-1 bg-white rounded-full shadow-sm hover:bg-gray-100 transition-colors"
-                          title="Удалить фон"
+                    <p className="text-xs text-gray-500 mb-3">
+                      Изображение будет добавлено на canvas как объект
+                    </p>
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <motion.label
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        htmlFor="image-upload"
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl cursor-pointer hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl font-semibold"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Загрузить изображение
+                      </motion.label>
+                      {isUploadingImage && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600 py-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                          Загрузка...
+                        </div>
+                      )}
+                      {currentSlide.uploadedImage && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="mt-3 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 relative shadow-sm"
                         >
-                          <X className="h-3 w-3 text-gray-600" />
-                        </button>
-                        <p className="text-sm text-blue-700 font-medium mb-2">✓ Фон загружен</p>
-                        <img
-                          src={currentSlide.backgroundImage.url}
-                          alt="Background preview"
-                          className="w-full h-48 object-contain rounded"
-                        />
-                        <p className="text-xs text-blue-600 mt-2">
-                          Фон автоматически установлен на canvas
-                        </p>
-                      </div>
-                    )}
+                          <motion.button
+                            whileHover={{ scale: 1.1, rotate: 90 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={handleRemoveImage}
+                            className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
+                            title="Удалить изображение"
+                          >
+                            <X className="h-3.5 w-3.5 text-gray-600" />
+                          </motion.button>
+                          <p className="text-sm text-green-700 font-semibold mb-2 flex items-center gap-1">
+                            <span className="text-green-500">✓</span> Изображение загружено
+                          </p>
+                          <img
+                            src={currentSlide.uploadedImage.url}
+                            alt="Preview"
+                            className="w-full h-48 object-contain rounded-lg shadow-sm"
+                          />
+                        </motion.div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+
+                  <div>
+                    <label className="block text-sm font-semibold mb-2.5 text-gray-700">
+                      Фон карточки
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Фон будет установлен как фоновое изображение
+                    </p>
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBackgroundUpload}
+                        className="hidden"
+                        id="background-upload"
+                      />
+                      <motion.label
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        htmlFor="background-upload"
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl cursor-pointer hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl font-semibold"
+                      >
+                        <ImageIcon className="h-4 w-4" />
+                        Выбрать фон
+                      </motion.label>
+                      {isUploadingImage && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600 py-2">
+                          <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                          Загрузка...
+                        </div>
+                      )}
+                      {currentSlide.backgroundImage && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="mt-3 p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200 relative shadow-sm"
+                        >
+                          <motion.button
+                            whileHover={{ scale: 1.1, rotate: 90 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={handleRemoveBackground}
+                            className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors"
+                            title="Удалить фон"
+                          >
+                            <X className="h-3.5 w-3.5 text-gray-600" />
+                          </motion.button>
+                          <p className="text-sm text-blue-700 font-semibold mb-2 flex items-center gap-1">
+                            <span className="text-blue-500">✓</span> Фон загружен
+                          </p>
+                          <img
+                            src={currentSlide.backgroundImage.url}
+                            alt="Background preview"
+                            className="w-full h-48 object-contain rounded-lg shadow-sm"
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Card>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
