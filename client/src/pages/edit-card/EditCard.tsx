@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
 import { useAppDispatch } from '@/shared/lib/hooks';
 import { productCardService } from '@/entities/productcard/api/productcard.service';
 import { deleteProductCardThunk } from '@/entities/productcard/model/productcard.thunk';
+import type { CardEditorRef } from '@/widgets/card-editor/ui/CardEditor';
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
@@ -24,6 +25,15 @@ export default function EditCard(): React.JSX.Element {
   const cardId = params?.id ? Number(params.id) : null;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const cardEditorRef = useRef<CardEditorRef | null>(null);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [slides, setSlides] = useState<SlideData[]>([
+    {
+      canvasData: undefined,
+      uploadedImage: null,
+      backgroundImage: null,
+    },
+  ]);
 
   const { data: card, isLoading } = useQuery({
     queryKey: ['productCard', cardId],
@@ -305,6 +315,48 @@ export default function EditCard(): React.JSX.Element {
           <div className="lg:col-span-2">
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Редактор карточки</h2>
+
+              {/* Навигация по слайдам */}
+              {hasMultipleSlides && (
+                <div className="mb-4 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSlideChange(Math.max(0, currentSlideIndex - 1))}
+                    disabled={currentSlideIndex === 0}
+                    className="flex items-center gap-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Предыдущий
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      Слайд {currentSlideIndex + 1} из {slideCount}
+                    </span>
+                    <div className="flex gap-1">
+                      {Array.from({ length: slideCount }).map((_, index) => (
+                        <div
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            index === currentSlideIndex ? 'bg-blue-500' : 'bg-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      handleSlideChange(Math.min(slideCount - 1, currentSlideIndex + 1))
+                    }
+                    disabled={currentSlideIndex === slideCount - 1}
+                    className="flex items-center gap-2"
+                  >
+                    Следующий
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
               <CardEditor
                 key={`slide-${String(currentSlideIndex)}-${cardSize}`}
                 ref={cardEditorRef}
@@ -352,6 +404,12 @@ export default function EditCard(): React.JSX.Element {
                     {card.status === 'completed' ? 'Завершена' : 'Черновик'}
                   </span>
                 </div>
+                {hasMultipleSlides && (
+                  <div>
+                    <p className="text-sm font-medium">Количество слайдов</p>
+                    <p className="text-sm text-muted-foreground">{slideCount}</p>
+                  </div>
+                )}
               </div>
             </Card>
           </div>
