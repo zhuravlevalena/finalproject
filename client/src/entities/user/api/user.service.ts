@@ -49,17 +49,13 @@ class UserService {
   }
 
   static async refresh(): Promise<User> {
-    try {
-      const response = await axios.get('/api/auth/refresh', {
-        withCredentials: true,
-      });
-      const { user, accessToken } = AuthResponseSchema.parse(response.data);
-      setAccessToken(accessToken);
-      return user;
-    } catch (error: any) {
-      throw error;
-    }
-  }
+  const response = await axios.get('/api/auth/refresh', {
+    withCredentials: true,
+  });
+  const { user, accessToken } = AuthResponseSchema.parse(response.data);
+  setAccessToken(accessToken);
+  return user;
+}
 
   static async logout(): Promise<void> {
     await axiosInstance.delete('/auth/logout');

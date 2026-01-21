@@ -45,6 +45,21 @@ export function Navbar(): React.JSX.Element {
   );
 
   useEffect(() => {
+    // Поиск доступен только авторизованным — на выходе закрываем и очищаем
+    if (!user) {
+      dispatch(setSearchOpen(false));
+      dispatch(setSearchValue(''));
+    }
+  }, [user, dispatch]);
+
+  // Поиск больше не анимируется/не раскрывается — держим флаг закрытым
+  useEffect(() => {
+    if (searchOpen) {
+      dispatch(setSearchOpen(false));
+    }
+  }, [searchOpen, dispatch]);
+
+  useEffect(() => {
     const root = document.documentElement;
     if (isDarkMode) {
       root.classList.add('dark');
@@ -134,8 +149,9 @@ export function Navbar(): React.JSX.Element {
   };
 
   return (
-    <nav className="relative z-50 border-b border-white/10 bg-card/70 backdrop-blur-xl">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center gap-3">
+    <>
+      <nav className="relative z-50 border-b border-white/10 bg-card/70 backdrop-blur-xl">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center gap-3">
         <div className="flex items-center gap-4">
           <button
             onClick={() => {
@@ -169,41 +185,33 @@ export function Navbar(): React.JSX.Element {
         </div>
 
         <div className="hidden md:flex items-center gap-4">
-          <div
-            className={`relative flex items-center overflow-hidden rounded-full border border-white/15 bg-background/60 backdrop-blur-lg transition-all duration-300 ${
-              searchOpen ? 'w-56 px-3' : 'w-10 px-0'
-            }`}
-          >
-            <button
-              type="button"
-              aria-label="Поиск"
-              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors"
-              onClick={() => {
-                if (!searchOpen) {
-                  dispatch(setSearchOpen(true));
-                } else {
+          {user && (
+            <div className="relative flex items-center w-56 px-3 rounded-full border border-white/15 bg-background/60 backdrop-blur-lg">
+              <button
+                type="button"
+                aria-label="Поиск"
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+                onClick={() => {
                   handleSearchSubmit();
-                }
-              }}
-            >
-              <span className="material-icons text-white/80 text-base">search</span>
-            </button>
-            <input
-              type="text"
-              value={searchValue}
-              onChange={(event) => dispatch(setSearchValue(event.target.value))}
-              placeholder="Поиск..."
-              className={`ml-2 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all duration-200 ${
-                searchOpen ? 'opacity-100 w-full' : 'opacity-0 w-0'
-              }`}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  handleSearchSubmit();
-                }
-              }}
-            />
-          </div>
+                }}
+              >
+                <span className="material-icons text-white/80 text-base"></span>
+              </button>
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(event) => dispatch(setSearchValue(event.target.value))}
+                placeholder="Поиск..."
+                className="ml-2 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleSearchSubmit();
+                  }
+                }}
+              />
+            </div>
+          )}
 
           {(user ? authNavItems : guestNavItems).map((item) => renderNavItem(item))}
 
@@ -247,6 +255,7 @@ export function Navbar(): React.JSX.Element {
           )}
         </div>
 
+        {/* Mobile burger */}
         <button
           type="button"
           className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-full border border-white/25 bg-card/70 hover:bg-white/10  transition-colors"
@@ -257,8 +266,9 @@ export function Navbar(): React.JSX.Element {
         </button>
       </div>
 
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-white/10 bg-card/90 backdrop-blur-2xl nav-slide-in">
+      {/* Mobile menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-white/10 bg-card/90 backdrop-blur-2xl nav-slide-in">
           <div className="container mx-auto px-4 py-3 flex flex-col gap-2">
             {user ? (
               <>
@@ -324,10 +334,11 @@ export function Navbar(): React.JSX.Element {
               </>
             )}
           </div>
-        </div>
-      )}
-
+          </div>
+        )}
+      </nav>
+      {/* Модалка выбора шаблонов */}
       <TemplateSelectorModal isOpen={isModalOpen} onClose={() => dispatch(setModalOpen(false))} />
-    </nav>
+    </>
   );
 }

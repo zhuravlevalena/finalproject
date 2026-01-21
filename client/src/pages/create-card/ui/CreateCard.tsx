@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
 import { fetchMarketplacesThunk } from '@/entities/marketplace/model/marketplace.thunk';
 import { fetchTemplatesThunk } from '@/entities/template/model/template.thunk';
-import { uploadImageThunk } from '@/entities/image/model/image.thunk';
+import { uploadImageThunk, fetchImageByIdThunk } from '@/entities/image/model/image.thunk';
 import { createProductCardThunk } from '@/entities/productcard/model/productcard.thunk';
 import { getOrCreateProductProfileThunk } from '@/entities/productprofile/model/productprofile.thunk';
 
@@ -49,6 +49,7 @@ type SlideData = {
 
 export default function CreateCard(): React.JSX.Element {
   const [, setLocation] = useLocation();
+  const searchParams = new URLSearchParams(window.location.search);
   const dispatch = useAppDispatch();
   const cardEditorRef = useRef<{
     getCanvasData?: () => {
@@ -113,6 +114,33 @@ export default function CreateCard(): React.JSX.Element {
       setSelectedTemplate(null);
     }
   }, [dispatch, selectedMarketplace]);
+
+  // Загружаем изображение из URL параметров если есть
+  useEffect(() => {
+    const imageId = searchParams.get('imageId');
+    const imageUrl = searchParams.get('imageUrl');
+    
+    if (imageId && imageUrl) {
+      // Загружаем полную информацию об изображении
+      dispatch(fetchImageByIdThunk(Number(imageId))).then((result) => {
+        if (fetchImageByIdThunk.fulfilled.match(result)) {
+          const imageData = { id: result.payload.id, url: result.payload.url };
+          setSlides((prev) => {
+            const newSlides = [...prev];
+            newSlides[0] = {
+              ...newSlides[0],
+              uploadedImage: imageData,
+            };
+            return newSlides;
+          });
+          // Переключаемся на вкладку изображений
+          setActiveTab('images');
+          // Очищаем URL параметры
+          window.history.replaceState({}, '', '/create-card');
+        }
+      });
+    }
+  }, [dispatch, searchParams]);
 
   // Функция для сохранения текущего состояния canvas перед переключением слайда
   const saveCurrentSlideCanvas = (): void => {

@@ -1,36 +1,50 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
-import UserService from "../api/user.service";
-import type { LoginForm, RegisterForm, User } from "./user.types";
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import UserService from '../api/user.service';
+import type { LoginForm, RegisterForm, User } from './user.types';
 
-export const registerThunk = createAsyncThunk('user/register', async (data: RegisterForm) => {
+type RejectValue = null | unknown;
+
+export const registerThunk = createAsyncThunk<undefined, RegisterForm>(
+  'user/register',
+  async (data) => {
     // При регистрации с подтверждением по коду, пользователь не сохраняется в Redux
-    // Пользователь будет сохранен только после подтверждения email через verifyEmailCode
     await UserService.register(data);
-    return null; // Не возвращаем пользователя, чтобы не сохранять в Redux
-});
-
-export const loginThunk = createAsyncThunk('user/login', async (data: LoginForm) => {
-    const result = await UserService.login(data);
-    return result;
-});
-
-export const refreshThunk = createAsyncThunk(
-  'user/refresh',
-  async (_, { rejectWithValue }) => {
-    try {
-      return await UserService.refresh();
-    } catch (error: any) {
-      // Тихая обработка ошибок - если refresh не удался (нет токена), это нормально
-      // Для неавторизованных пользователей это ожидаемое поведение
-      if (error?.response?.status === 401) {
-        return rejectWithValue(null);
-      }
-      return rejectWithValue(error);
-    }
-  }
+    return undefined;
+  },
 );
 
-export const logoutThunk = createAsyncThunk('user/logout', () => UserService.logout());
+export const loginThunk = createAsyncThunk<User, LoginForm>(
+  'user/login',
+  async (data) => {
+    return await UserService.login(data);
+  },
+);
+
+export const refreshThunk = createAsyncThunk<User, undefined, { rejectValue: RejectValue }>(
+  'user/refresh',
+  async (_arg, { rejectWithValue }) => {
+    try {
+      return await UserService.refresh();
+    } catch (error) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+
+      // если refresh не удался (нет токена) — это нормальный кейс для гостя
+      if (status === 401) {
+        return rejectWithValue(null);
+      }
+
+      return rejectWithValue(error);
+    }
+  },
+);
+
+export const logoutThunk = createAsyncThunk<undefined, undefined>(
+  'user/logout',
+  async () => {
+    await UserService.logout();
+    return undefined;
+  },
+);
 
 export const updateProfileThunk = createAsyncThunk<
   User,
@@ -42,6 +56,5 @@ export const updateProfileThunk = createAsyncThunk<
     email?: string;
   }
 >('user/updateProfile', async (data) => {
-  const updated = await UserService.updateProfile(data);
-  return updated;
+  return await UserService.updateProfile(data);
 });

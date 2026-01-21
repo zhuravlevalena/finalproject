@@ -5,6 +5,7 @@ import templateReducer from '@/entities/template/model/template.slice';
 import imageReducer from '@/entities/image/model/image.slice';
 import productCardReducer from '@/entities/productcard/model/productcard.slice';
 import productProfileReducer from '@/entities/productprofile/model/productprofile.slice';
+import editorReducer from '@/features/editor/model/editorSlice';
 import aiReducer from '@/entities/ai/model/ai.slice';
 import navbarReducer from '@/widgets/navbar/model/navbar.slice';
 
@@ -16,11 +17,12 @@ export const store = configureStore({
     image: imageReducer,
     productCard: productCardReducer,
     productProfile: productProfileReducer,
+    editor: editorReducer,
     ai: aiReducer,
     navbar: navbarReducer,
   },
 });
 
-// Infer the `RootState` and `AppDispatch` types from the store itself
+
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

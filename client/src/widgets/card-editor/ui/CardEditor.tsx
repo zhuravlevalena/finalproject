@@ -31,7 +31,7 @@ type CardEditorProps = {
   onSave: (
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
-  ) => void;
+  ) => void | Promise<void>;
   initialImage?: {
     id: number;
     url: string;
@@ -53,6 +53,7 @@ type CardEditorProps = {
   };
 };
 
+// Тип для ref методов
 export type CardEditorRef = {
   addTextElements?: (
     texts: { text: string; fontSize?: number; top?: number; left?: number }[],
@@ -64,6 +65,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
   ({ onSave, initialImage, backgroundImage, cardSize, card }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
+    const isRestoringRef = useRef(false); // чтобы не писать историю во время загрузки/отката
     const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
     const [history, setHistory] = useState<{ undo: string[]; redo: string[] }>({
       undo: [],
@@ -72,6 +74,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
     const [zoom, setZoom] = useState(100);
     const [isLoading, setIsLoading] = useState(false);
 
+    // Текстовые свойства для панели редактирования
     const [textProps, setTextProps] = useState({
       fontSize: 24,
       fontFamily: 'Arial',
@@ -81,28 +84,39 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       fontStyle: 'normal' as 'normal' | 'italic',
     });
 
-
+    // Сохранение истории
     const saveHistory = useCallback(() => {
       if (!fabricCanvasRef.current) return;
-      const json = fabricCanvasRef.current.toJSON();
-      setHistory((prev) => ({
-        undo: [...prev.undo, JSON.stringify(json)].slice(-50),
-        redo: [],
-      }));
+      try {
+        const json = fabricCanvasRef.current.toJSON();
+        setHistory((prev) => ({
+          undo: [...prev.undo, JSON.stringify(json)].slice(-50),
+          redo: [],
+        }));
+      } catch (error) {
+        // Логируем, но не роняем весь редактор, если Fabric не может сериализовать объект
+        // Это особенно важно для макетов, загруженных из сидов, где структура может отличаться
+         
+        console.error('Error saving canvas history:', error);
+      }
     }, []);
 
-
+    // Обновление выбранного объекта
     const updateSelectedObject = useCallback(() => {
       if (!fabricCanvasRef.current) return;
       const activeObject = fabricCanvasRef.current.getActiveObject();
       setSelectedObject(activeObject);
 
-      if (activeObject?.type === 'textbox') {
-        const textObj = activeObject as fabric.Textbox;
+      if (
+        activeObject?.type === 'textbox' ||
+        activeObject?.type === 'text' ||
+        activeObject?.type === 'i-text'
+      ) {
+        const textObj = activeObject as fabric.Textbox | fabric.IText | fabric.Text;
         setTextProps({
-          fontSize: textObj.fontSize ?? 24,
-          fontFamily: textObj.fontFamily ?? 'Arial',
-          fill: (textObj.fill as string) ?? '#000000',
+          fontSize: textObj.fontSize || 24,
+          fontFamily: textObj.fontFamily || 'Arial',
+          fill: (textObj.fill as string) || '#000000',
           textAlign: (textObj.textAlign as 'left' | 'center' | 'right' | 'justify') || 'left',
           fontWeight: textObj.fontWeight === 'bold' ? 'bold' : 'normal',
           fontStyle: textObj.fontStyle === 'italic' ? 'italic' : 'normal',
@@ -110,17 +124,21 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       }
     }, []);
 
+    // Загрузка состояния из истории
     const loadFromHistory = useCallback(
       (jsonString: string) => {
         if (!fabricCanvasRef.current) return;
+        isRestoringRef.current = true;
         fabricCanvasRef.current.loadFromJSON(jsonString, () => {
           fabricCanvasRef.current?.renderAll();
           updateSelectedObject();
+          isRestoringRef.current = false;
         });
       },
       [updateSelectedObject],
     );
 
+    // Метод для добавления текстовых элементов на canvas
     const addTextElements = useCallback(
       (texts: { text: string; fontSize?: number; top?: number; left?: number }[]) => {
         if (!fabricCanvasRef.current) return;
@@ -129,7 +147,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
           const textbox = new fabric.Textbox(text, {
             left,
             top,
-            width: fabricCanvasRef.current!.getWidth() - left * 2, 
+            width: fabricCanvasRef.current!.getWidth() - left * 2, // Ширина с отступами
             fontSize,
             fontFamily: textProps.fontFamily,
             fill: textProps.fill,
@@ -139,7 +157,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             editable: true,
             selectable: true,
             evented: true,
-            splitByGrapheme: true, 
+            splitByGrapheme: true, // Для правильного переноса строк
           });
 
           fabricCanvasRef.current!.add(textbox);
@@ -165,6 +183,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       };
     }, []);
 
+    // Экспортируем методы через ref
     useImperativeHandle(
       ref,
       () => ({
@@ -174,7 +193,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       [addTextElements, getCanvasData],
     );
 
-   
+    // Инициализация canvas
     useEffect(() => {
       if (!canvasRef.current) return;
 
@@ -186,16 +205,144 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         backgroundColor: '#ffffff',
         preserveObjectStacking: true,
       });
+      // Стартовая точка истории (позволяет сделать undo сразу после загрузки)
+      setHistory({
+        undo: [JSON.stringify(canvas.toJSON())],
+        redo: [],
+      });
 
-     
+      // Загружаем сохраненные данные, если есть
       if (card?.canvasData && typeof card.canvasData === 'object' && 'fabric' in card.canvasData) {
-        const canvasData = card.canvasData as { fabric?: Record<string, unknown> };
+        const canvasData = card.canvasData as {
+          fabric?: Record<string, unknown>;
+          meta?: { cardSize?: string; [key: string]: unknown };
+        };
         const fabricData = canvasData.fabric;
         if (fabricData) {
           try {
+            // Определяем исходный размер макета
+            const sourceSize = canvasData.meta?.cardSize || '900x1200';
+            const [sourceWidth, sourceHeight] = sourceSize.split('x').map(Number);
+            const [targetWidth, targetHeight] = cardSize.split('x').map(Number);
+
+            // Вычисляем коэффициенты масштабирования
+            const scaleX = targetWidth / sourceWidth;
+            const scaleY = targetHeight / sourceHeight;
+
             canvas.loadFromJSON(fabricData, () => {
+              // Масштабируем все объекты, если размер canvas изменился
+              if (scaleX !== 1 || scaleY !== 1) {
+                canvas.getObjects().forEach((obj) => {
+                  // Пропускаем фоновые объекты
+                  if (obj === canvas.backgroundImage || obj === canvas.backgroundVpt) {
+                    return;
+                  }
+
+                  // Масштабируем координаты
+                  if (obj.left !== undefined) {
+                    obj.set('left', (obj.left || 0) * scaleX);
+                  }
+                  if (obj.top !== undefined) {
+                    obj.set('top', (obj.top || 0) * scaleY);
+                  }
+
+                  // Масштабируем размеры объектов
+                  if (obj.width !== undefined) {
+                    obj.set('width', (obj.width || 0) * scaleX);
+                  }
+                  if (obj.height !== undefined) {
+                    obj.set('height', (obj.height || 0) * scaleY);
+                  }
+
+                  // Масштабируем радиус для кругов
+                  if (obj.type === 'circle' && 'radius' in obj) {
+                    const circle = obj as fabric.Circle;
+                    const avgScale = (scaleX + scaleY) / 2; // Для кругов используем средний масштаб
+                    circle.set('radius', (circle.radius || 0) * avgScale);
+                  }
+
+                  // Масштабируем размер шрифта для текстовых объектов
+                  if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
+                    const textObj = obj as fabric.Textbox | fabric.IText | fabric.Text;
+                    const avgScale = (scaleX + scaleY) / 2; // Для текста используем средний масштаб
+                    const updates: Record<string, unknown> = {};
+                    if (textObj.fontSize) {
+                      updates.fontSize = textObj.fontSize * avgScale;
+                    }
+                    // Также масштабируем ширину текстового блока
+                    if (textObj.width !== undefined) {
+                      updates.width = (textObj.width || 0) * scaleX;
+                    }
+                    if (Object.keys(updates).length > 0) {
+                      textObj.set(updates);
+                    }
+                  }
+
+                  // Масштабируем strokeWidth
+                  if (obj.strokeWidth !== undefined && obj.strokeWidth > 0) {
+                    const avgScale = (scaleX + scaleY) / 2;
+                    obj.set('strokeWidth', obj.strokeWidth * avgScale);
+                  }
+
+                  // Масштабируем координаты для линий
+                  if (obj.type === 'line') {
+                    const line = obj as fabric.Line;
+                    if (line.x1 !== undefined) line.set('x1', line.x1 * scaleX);
+                    if (line.y1 !== undefined) line.set('y1', line.y1 * scaleY);
+                    if (line.x2 !== undefined) line.set('x2', line.x2 * scaleX);
+                    if (line.y2 !== undefined) line.set('y2', line.y2 * scaleY);
+                  }
+
+                  // Масштабируем радиусы скругления для прямоугольников
+                  if (obj.type === 'rect') {
+                    const rect = obj as fabric.Rect;
+                    if (rect.rx !== undefined && rect.rx > 0) {
+                      rect.set('rx', rect.rx * scaleX);
+                    }
+                    if (rect.ry !== undefined && rect.ry > 0) {
+                      rect.set('ry', rect.ry * scaleY);
+                    }
+                  }
+
+                  // Обновляем координаты объекта после масштабирования
+                  obj.setCoords();
+                });
+              }
+
+              // Убеждаемся, что все объекты (кроме фона) редактируемы
+              canvas.getObjects().forEach((obj) => {
+                // Пропускаем фоновые объекты
+                if (obj === canvas.backgroundImage || obj === canvas.backgroundVpt) {
+                  return;
+                }
+                // Устанавливаем правильные настройки для редактирования
+                obj.set({
+                  selectable: true,
+                  evented: true,
+                });
+                // Для текстовых объектов (textbox, text, i-text) включаем редактирование и инициализируем styles
+                if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
+                  const textObj = obj as fabric.Textbox | fabric.IText | fabric.Text;
+                  textObj.set('editable', true);
+                  // Инициализируем styles, если их нет или они некорректны
+                  if (!textObj.styles || !Array.isArray(textObj.styles)) {
+                    textObj.styles = {};
+                  }
+                  // Убеждаемся, что для каждой строки есть массив стилей
+                  const textLines = textObj.text?.split('\n') || [];
+                  textLines.forEach((line, index) => {
+                    if (!textObj.styles[index]) {
+                      textObj.styles[index] = {};
+                    }
+                  });
+                }
+              });
               canvas.renderAll();
-              saveHistory();
+              // Фиксируем состояние после загрузки макета
+              setHistory({
+                undo: [JSON.stringify(canvas.toJSON())],
+                redo: [],
+              });
             });
           } catch (err) {
             console.error('Error loading canvas data:', err);
@@ -203,17 +350,22 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         }
       }
 
-    
-      canvas.on('object:added', () => {
+      // События canvas
+      const historySafe = () => {
+        if (isRestoringRef.current) return;
         saveHistory();
+      };
+
+      canvas.on('object:added', () => {
+        historySafe();
         updateSelectedObject();
       });
       canvas.on('object:modified', () => {
-        saveHistory();
+        historySafe();
         updateSelectedObject();
       });
       canvas.on('object:removed', () => {
-        saveHistory();
+        historySafe();
         updateSelectedObject();
       });
       canvas.on('selection:created', updateSelectedObject);
@@ -225,16 +377,101 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       canvas.on('object:scaling', updateSelectedObject);
       canvas.on('object:rotating', updateSelectedObject);
 
+      // События редактирования текста
+      // options.target - текущий текстовый объект
+      canvas.on('text:changed', () => {
+        historySafe();
+        updateSelectedObject();
+      });
+
+      canvas.on('editing:entered', (options) => {
+        const target = options?.target as fabric.Textbox | fabric.IText | fabric.Text | undefined;
+        if (target && (target.type === 'textbox' || target.type === 'text' || target.type === 'i-text')) {
+          // Исправляем проблему с styles для предотвращения ошибки removeStyleFromTo
+          // Инициализируем styles как объект, если его нет
+          if (!target.styles || typeof target.styles !== 'object') {
+            // @ts-expect-error styles есть у текстовых объектов fabric
+            target.styles = {};
+          }
+          // Убеждаемся, что для каждой строки есть объект стилей
+          const textLines = target.text?.split('\n') || [];
+          textLines.forEach((line, index) => {
+            // @ts-expect-error styles есть у текстовых объектов fabric
+            if (!target.styles[index]) {
+              // @ts-expect-error styles есть у текстовых объектов fabric
+              target.styles[index] = {};
+            }
+            // Убеждаемся, что для каждого символа есть объект стилей
+            for (let i = 0; i <= line.length; i++) {
+              // @ts-expect-error styles есть у текстовых объектов fabric
+              if (!target.styles[index][i]) {
+                // @ts-expect-error styles есть у текстовых объектов fabric
+                target.styles[index][i] = {};
+              }
+            }
+          });
+        }
+      });
+
+      canvas.on('editing:exited', (options) => {
+        const target = options?.target as fabric.Textbox | undefined;
+        if (target) {
+          // После выхода из режима редактирования фиксируем состояние в истории
+          saveHistory();
+          updateSelectedObject();
+        }
+      });
+
+      // Обработчик клавиатуры для удаления объектов (Delete/Backspace)
+      const handleKeyDown = (e: KeyboardEvent): void => {
+        // Пропускаем, если пользователь редактирует текст в input/textarea
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement ||
+          (e.target as HTMLElement).isContentEditable
+        ) {
+          return;
+        }
+
+        if ((e.key === 'Delete' || e.key === 'Backspace') && canvas.getActiveObject()) {
+          e.preventDefault();
+          const activeObjects = canvas.getActiveObjects();
+          activeObjects.forEach((obj) => {
+            // Не удаляем фоновые объекты
+            if (obj !== canvas.backgroundImage && obj !== canvas.backgroundVpt) {
+              canvas.remove(obj);
+            }
+          });
+          canvas.discardActiveObject();
+          canvas.renderAll();
+          setSelectedObject(null);
+          saveHistory();
+        }
+      };
+
+      // Добавляем обработчик клавиатуры
+      window.addEventListener('keydown', handleKeyDown);
+
       fabricCanvasRef.current = canvas;
       saveHistory();
 
       return () => {
+        // Удаляем обработчик клавиатуры
+        window.removeEventListener('keydown', handleKeyDown);
         canvas.dispose();
         fabricCanvasRef.current = null;
       };
     }, [cardSize, saveHistory, updateSelectedObject, card]);
 
-    
+    // При смене масштаба пересчитываем offset для правильных координат мыши (canvas в scale-обёртке)
+    useEffect(() => {
+      const c = fabricCanvasRef.current;
+      if (!c) return;
+      c.calcOffset();
+      c.renderAll();
+    }, [zoom]);
+
+    // Установка фона
     useEffect(() => {
       if (!backgroundImage || !fabricCanvasRef.current) return;
 
@@ -254,6 +491,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       );
     }, [backgroundImage, saveHistory]);
 
+    // Добавление основного изображения
     useEffect(() => {
       if (!initialImage || !fabricCanvasRef.current || backgroundImage) return;
 
@@ -285,6 +523,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       );
     }, [initialImage, backgroundImage, saveHistory]);
 
+    // Добавление текста
     const handleAddText = (): void => {
       if (!fabricCanvasRef.current) return;
 
@@ -309,7 +548,8 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       updateSelectedObject();
     };
 
-      const handleAddImage = (): void => {
+    // Добавление изображения
+    const handleAddImage = (): void => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
@@ -318,15 +558,19 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         if (!file || !fabricCanvasRef.current) return;
 
         try {
+          // Сначала загружаем файл на сервер
           const uploadedImage = await imageService.upload(file);
 
+          // Получаем URL с сервера - используем полный URL
           let imageUrl = uploadedImage.url;
           if (!imageUrl.startsWith('http')) {
+            // Если URL относительный, добавляем базовый URL
             imageUrl = `${window.location.origin}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
           }
 
           console.log('Loading image from URL:', imageUrl);
 
+          // Добавляем в canvas через URL (не base64!)
           fabric.Image.fromURL(
             imageUrl,
             (img) => {
@@ -334,12 +578,10 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 console.error('Failed to load image or canvas not available');
                 return;
               }
-              
 
               const canvas = fabricCanvasRef.current;
-              if (!canvas) return;
-              const imgWidth = img.width ?? 1;
-              const imgHeight = img.height ?? 1;
+              const imgWidth = img.width || 1;
+              const imgHeight = img.height || 1;
               const maxWidth = canvas.getWidth() * 0.6;
               const maxHeight = canvas.getHeight() * 0.6;
               const scale = Math.min(maxWidth / imgWidth, maxHeight / imgHeight, 1);
@@ -375,24 +617,32 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       input.click();
     };
 
+    // Удаление выбранного объекта
     const handleDelete = (): void => {
       if (!fabricCanvasRef.current) return;
       const activeObjects = fabricCanvasRef.current.getActiveObjects();
+      if (activeObjects.length === 0) return;
+      
       activeObjects.forEach((obj) => {
-        fabricCanvasRef.current?.remove(obj);
+        // Не удаляем фоновые объекты
+        if (obj !== fabricCanvasRef.current?.backgroundImage && obj !== fabricCanvasRef.current?.backgroundVpt) {
+          fabricCanvasRef.current?.remove(obj);
+        }
       });
       fabricCanvasRef.current.discardActiveObject();
       fabricCanvasRef.current.renderAll();
       setSelectedObject(null);
+      saveHistory(); // Сохраняем историю после удаления
     };
 
+    // Дублирование объекта
     const handleDuplicate = (): void => {
       if (!fabricCanvasRef.current || !selectedObject) return;
 
       selectedObject.clone((cloned: fabric.Object) => {
         cloned.set({
-          left: (cloned.left ?? 0) + 20,
-          top: (cloned.top ?? 0) + 20,
+          left: (cloned.left || 0) + 20,
+          top: (cloned.top || 0) + 20,
         });
         fabricCanvasRef.current!.add(cloned);
         fabricCanvasRef.current!.setActiveObject(cloned);
@@ -401,43 +651,61 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       });
     };
 
+    // Undo
     const handleUndo = (): void => {
-      if (!fabricCanvasRef.current || history.undo.length < 2) return;
-      const current = JSON.stringify(fabricCanvasRef.current.toJSON());
-      setHistory((prev) => ({
-        undo: prev.undo.slice(0, -1),
-        redo: [current, ...prev.redo],
-      }));
-      loadFromHistory(history.undo[history.undo.length - 2]);
+      if (!fabricCanvasRef.current) return;
+      setHistory((prev) => {
+        if (prev.undo.length < 2) return prev;
+        const current = JSON.stringify(fabricCanvasRef.current!.toJSON());
+        const target = prev.undo[prev.undo.length - 2];
+        // Загружаем состояние после обновления стейта истории
+        setTimeout(() => loadFromHistory(target), 0);
+        return {
+          undo: prev.undo.slice(0, -1),
+          redo: [current, ...prev.redo],
+        };
+      });
     };
 
+    // Redo
     const handleRedo = (): void => {
-      if (!fabricCanvasRef.current || history.redo.length === 0) return;
-      const current = JSON.stringify(fabricCanvasRef.current.toJSON());
-      setHistory((prev) => ({
-        undo: [...prev.undo, current],
-        redo: prev.redo.slice(1),
-      }));
-      loadFromHistory(history.redo[0]);
+      if (!fabricCanvasRef.current) return;
+      setHistory((prev) => {
+        if (prev.redo.length === 0) return prev;
+        const current = JSON.stringify(fabricCanvasRef.current!.toJSON());
+        const target = prev.redo[0];
+        setTimeout(() => loadFromHistory(target), 0);
+        return {
+          undo: [...prev.undo, current],
+          redo: prev.redo.slice(1),
+        };
+      });
     };
 
+    // Обновление текстовых свойств (textbox, text, i-text)
     const updateTextProperty = (property: string, value: string | number): void => {
-      if (!fabricCanvasRef.current || selectedObject?.type !== 'textbox') return;
+      if (!fabricCanvasRef.current || !selectedObject) return;
+      const t = selectedObject.type;
+      if (t !== 'textbox' && t !== 'text' && t !== 'i-text') return;
 
-      const textObj = selectedObject as fabric.Textbox;
+      const textObj = selectedObject as fabric.Textbox | fabric.IText | fabric.Text;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       textObj.set(property as any, value);
       fabricCanvasRef.current.renderAll();
       updateSelectedObject();
     };
 
+    // Изменение размера шрифта (textbox, text, i-text)
     const handleFontSizeChange = (delta: number): void => {
-      if (selectedObject?.type !== 'textbox') return;
-      const textObj = selectedObject as fabric.Textbox;
-      const newSize = Math.max(8, Math.min(200, (textObj.fontSize ?? 24) + delta));
+      if (!selectedObject) return;
+      const t = selectedObject.type;
+      if (t !== 'textbox' && t !== 'text' && t !== 'i-text') return;
+      const textObj = selectedObject as fabric.Textbox | fabric.IText | fabric.Text;
+      const newSize = Math.max(8, Math.min(200, (textObj.fontSize || 24) + delta));
       updateTextProperty('fontSize', newSize);
     };
 
+    // Экспорт
     const handleExport = (): void => {
       if (!fabricCanvasRef.current) return;
       const dataURL = fabricCanvasRef.current.toDataURL({
@@ -451,10 +719,12 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       link.click();
     };
 
+    // Сохранение
     const handleSave = async (): Promise<void> => {
       if (!fabricCanvasRef.current) return;
       setIsLoading(true);
       try {
+        // 1. Конвертируем canvas в PNG для превью/экспорта
         const dataURL = fabricCanvasRef.current.toDataURL({
           format: 'png',
           quality: 1,
@@ -466,18 +736,33 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         const timestamp = String(Date.now());
         const file = new File([blob], `card-${timestamp}.png`, { type: 'image/png' });
 
-        const fabricJson = fabricCanvasRef.current.toJSON();
+        // 2. Получаем полный Fabric JSON для восстановления карточки
+        let fabricJson: Record<string, unknown> | null = null;
+        try {
+          fabricJson = fabricCanvasRef.current.toJSON();
+        } catch (jsonError) {
+          // Если Fabric не может корректно сериализовать объект (частая проблема с textbox/styles),
+          // не роняем весь поток сохранения — просто логируем и продолжаем без fabric JSON.
+          // В этом случае карточка сохранится как готовое изображение, а не редактируемый макет.
+           
+          console.error('Error serializing canvas to JSON:', jsonError);
+        }
 
+        // 3. Метаданные
         const meta = {
           width: fabricCanvasRef.current.getWidth(),
           height: fabricCanvasRef.current.getHeight(),
+          cardSize, // Сохраняем размер карточки для правильного масштабирования при загрузке
           objectsCount: fabricCanvasRef.current.getObjects().length,
         };
 
-        onSave(file, {
-          fabric: fabricJson, 
-          meta,
-        });
+        // 4. Отправляем всё вместе (await, чтобы дождаться редиректа и т.п. в родителе)
+        await Promise.resolve(
+          onSave(file, {
+            fabric: fabricJson || undefined, // Полный JSON для восстановления (если доступен)
+            meta,
+          }),
+        );
       } catch (error) {
         console.error('Error saving canvas:', error);
         // eslint-disable-next-line no-alert
@@ -486,22 +771,24 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         setIsLoading(false);
       }
     };
+    // Изменение масштаба (масштаб применяется к обёртке через style в JSX, transform-origin: top left — без смещения)
     const handleZoom = (delta: number): void => {
-      const newZoom = Math.max(25, Math.min(200, zoom + delta));
-      setZoom(newZoom);
-      if (fabricCanvasRef.current && canvasRef.current) {
-        const scale = newZoom / 100;
-        canvasRef.current.style.transform = `scale(${String(scale)})`;
-        canvasRef.current.style.transformOrigin = 'top left';
-      }
+      setZoom((z) => Math.max(25, Math.min(200, z + delta)));
     };
 
-    const isTextSelected = selectedObject?.type === 'textbox';
+    const isTextSelected = Boolean(
+      selectedObject &&
+        (selectedObject.type === 'textbox' ||
+          selectedObject.type === 'text' ||
+          selectedObject.type === 'i-text'),
+    );
     const isImageSelected = selectedObject?.type === 'image';
 
     return (
       <div className="flex flex-col h-full">
+        {/* Верхняя панель инструментов */}
         <div className="flex items-center gap-2 p-3 bg-gray-50 border-b border-gray-200 flex-wrap">
+          {/* Группа добавления */}
           <div className="flex items-center gap-1 border-r pr-2 mr-2">
             <button
               onClick={handleAddText}
@@ -521,6 +808,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             </button>
           </div>
 
+          {/* Группа истории */}
           <div className="flex items-center gap-1 border-r pr-2 mr-2">
             <button
               onClick={handleUndo}
@@ -540,6 +828,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             </button>
           </div>
 
+          {/* Группа действий */}
           <div className="flex items-center gap-1 border-r pr-2 mr-2">
             <button
               onClick={handleDuplicate}
@@ -559,6 +848,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             </button>
           </div>
 
+          {/* Масштаб */}
           <div className="flex items-center gap-2 border-r pr-2 mr-2">
             <button
               onClick={() => handleZoom(-10)}
@@ -575,6 +865,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             </button>
           </div>
 
+          {/* Сохранение и экспорт */}
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={handleSave}
@@ -597,22 +888,31 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         </div>
 
         <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
-          <div className="flex-1 flex items-center justify-center p-4 bg-gray-100 overflow-auto">
+          {/* Canvas область: items-start justify-start и transform-origin: top left — макет не смещается при выборе и зуме */}
+          <div className="flex-1 flex items-start justify-start p-4 bg-gray-100 overflow-auto min-h-0">
             <div
-              className="bg-white shadow-lg rounded-lg p-2"
-              style={{ transform: `scale(${String(zoom / 100)})` }}
-
+              className="bg-white shadow-lg rounded-lg p-2 inline-block"
+              style={{
+                transform: `scale(${zoom / 100})`,
+                transformOrigin: 'top left',
+              }}
             >
               <canvas ref={canvasRef} />
             </div>
           </div>
 
-          {selectedObject && (
-            <div className="w-full md:w-80 bg-white border-t md:border-t-0 md:border-l border-gray-200 p-4 overflow-y-auto">
-              <h3 className="text-lg font-semibold mb-4">Редактирование</h3>
+          {/* Правая панель свойств (всегда видна — без смещения макета при выборе) */}
+          <div className="w-full md:w-80 flex-shrink-0 bg-white border-t md:border-t-0 md:border-l border-gray-200 p-4 overflow-y-auto">
+            {!selectedObject ? (
+              <p className="text-gray-500 text-sm">Выберите объект на холсте для редактирования</p>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold mb-4">Редактирование</h3>
 
-              {isTextSelected && (
+                {/* Редактирование текста */}
+                {isTextSelected && (
                 <div className="space-y-4">
+                  {/* Размер шрифта */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Размер шрифта</label>
                     <div className="flex items-center gap-2">
@@ -642,6 +942,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     </div>
                   </div>
 
+                  {/* Шрифт */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Шрифт</label>
                     <select
@@ -659,6 +960,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     </select>
                   </div>
 
+                  {/* Цвет текста */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Цвет текста</label>
                     <input
@@ -669,6 +971,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     />
                   </div>
 
+                  {/* Стили текста */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Стиль</label>
                     <div className="flex gap-2">
@@ -701,6 +1004,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     </div>
                   </div>
 
+                  {/* Выравнивание */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Выравнивание</label>
                     <div className="flex gap-2">
@@ -739,6 +1043,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 </div>
               )}
 
+              {/* Редактирование изображения */}
               {isImageSelected && (
                 <div className="space-y-4">
                   <div>
@@ -747,7 +1052,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                       <button
                         onClick={() => {
                           if (selectedObject && fabricCanvasRef.current) {
-                            const currentAngle = selectedObject.angle ?? 0;
+                            const currentAngle = selectedObject.angle || 0;
                             selectedObject.set('angle', (currentAngle - 15) % 360);
                             fabricCanvasRef.current.renderAll();
                           }
@@ -757,12 +1062,12 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                         <RotateCw className="h-4 w-4 rotate-180" />
                       </button>
                       <span className="flex-1 text-center text-sm">
-                        {Math.round(selectedObject?.angle ?? 0)}°
+                        {Math.round(selectedObject?.angle || 0)}°
                       </span>
                       <button
                         onClick={() => {
                           if (selectedObject && fabricCanvasRef.current) {
-                            const currentAngle = selectedObject.angle ?? 0;
+                            const currentAngle = selectedObject.angle || 0;
                             selectedObject.set('angle', (currentAngle + 15) % 360);
                             fabricCanvasRef.current.renderAll();
                           }
@@ -782,15 +1087,19 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 </div>
               )}
 
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
-                  {selectedObject.type === 'textbox' && 'Дважды кликните для редактирования текста'}
-                  {selectedObject.type === 'image' &&
-                    'Перетащите для перемещения, углы для масштабирования'}
-                </p>
-              </div>
-            </div>
-          )}
+                {/* Общие свойства */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">
+                    {selectedObject.type === 'textbox' && 'Дважды кликните для редактирования текста'}
+                    {(selectedObject.type === 'text' || selectedObject.type === 'i-text') &&
+                      'Дважды кликните для редактирования текста'}
+                    {selectedObject.type === 'image' &&
+                      'Перетащите для перемещения, углы для масштабирования'}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
