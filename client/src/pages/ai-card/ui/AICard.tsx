@@ -20,7 +20,15 @@ export default function AICard(): React.JSX.Element {
     }
 
     dispatch(clearResponse());
-    await dispatch(askAIThunk(prompt));
+    const resultAction = await dispatch(askAIThunk(prompt));
+    // Логируем ответ для отладки, чтобы видеть, что именно приходит (URL или текст)
+    if (askAIThunk.fulfilled.match(resultAction)) {
+      // eslint-disable-next-line no-console
+      console.log('AI response:', resultAction.payload);
+    } else {
+      // eslint-disable-next-line no-console
+      console.error('AI error:', resultAction.error);
+    }
   };
 
   return (
@@ -28,7 +36,7 @@ export default function AICard(): React.JSX.Element {
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Карточка AI</h1>
         <p className="text-gray-600">
-          Создайте карточку товара с помощью искусственного интеллекта
+          Сгенерируйте картинку с помощью ии для Вашей карточки товара
         </p>
       </div>
 
@@ -74,24 +82,46 @@ export default function AICard(): React.JSX.Element {
           {response && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
               <h3 className="text-sm font-medium text-green-800 mb-2">Результат:</h3>
-              {/* Если пришёл URL картинки (/img/...), показываем изображение */}
-              {typeof response === 'string' && response.startsWith('/img/') ? (
-                <div className="flex flex-col items-center gap-2">
-                  <img
-                    src={response}
-                    alt="Сгенерированное изображение"
-                    className="max-h-96 w-auto rounded shadow-md bg-white"
-                  />
-                  <p className="text-xs text-gray-500 break-all">
-                    URL: {response}
-                  </p>
-                </div>
-              ) : (
-                <div className="text-sm text-green-700 whitespace-pre-wrap">{response}</div>
-              )}
+              {(() => {
+                const value = typeof response === 'string' ? response.trim() : '';
+                const isImageUrl =
+                  typeof value === 'string' &&
+                  !!value &&
+                  (value.startsWith('/img/') ||
+                    value.includes('/img/') ||
+                    value.match(/\.(png|jpg|jpeg|gif|webp)$/i));
+
+                // eslint-disable-next-line no-console
+                console.log('AI response value:', value, 'Is image URL:', isImageUrl);
+
+                if (isImageUrl) {
+                  return (
+                    <div className="flex flex-col items-center gap-2">
+                      <img
+                        src={value}
+                        alt="Сгенерированное изображение"
+                        className="max-w-full max-h-96 w-auto rounded shadow-md bg-white border border-gray-200"
+                        onError={(e) => {
+                          // eslint-disable-next-line no-console
+                          console.error('Ошибка загрузки изображения по URL:', value);
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                      <p className="text-xs text-gray-500 break-all">{value}</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="text-sm text-green-700 whitespace-pre-wrap break-words">
+                    {typeof response === 'string' ? response : JSON.stringify(response)}
+                  </div>
+                );
+              })()}
             </div>
           )}
-          
+
           {loading && (
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2">

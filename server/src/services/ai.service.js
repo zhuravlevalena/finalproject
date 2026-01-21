@@ -1,77 +1,138 @@
-const { OpenAI } = require('openai');
-const path = require('path');
-const fs = require('fs').promises;
-const { randomUUID } = require('crypto');
 require('dotenv').config();
+const { GigaChat, detectImage } = require('gigachat');
+const fs = require('fs').promises;
+const path = require('path');
 
-const IMAGES_DIR = path.join(__dirname, '../img');
-
-const client = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPEN_API_KEY,
-});
-
-// Функция для сохранения base64 картинки в файл
-async function saveImageFromBase64(base64DataUrl, filename) {
-  // Создаем папку img если её нет
-  await fs.mkdir(IMAGES_DIR, { recursive: true });
-  
-  // Извлекаем base64 часть из data URL (формат: data:image/png;base64,iVBORw0KG...)
-  const base64Match = base64DataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-  if (!base64Match) {
-    throw new Error('Неверный формат base64 data URL');
+class AiService {
+  constructor() {
+    this.client = new GigaChat({
+      model: 'GigaChat-Pro',
+      credentials: process.env.GIGACHAT_KEY,
+       timeout:600,
+    });
   }
-  
-  const [, imageType, base64Data] = base64Match;
-  const buffer = Buffer.from(base64Data, 'base64');
-  const filepath = path.join(IMAGES_DIR, filename);
-  
-  await fs.writeFile(filepath, buffer);
-  return filepath;
-}
 
-async function createImg(query){
-const apiResponse = await client.chat.completions.create({
-  model: 'black-forest-labs/flux.2-klein-4b',
-  messages: [
-    {
-      role: 'user',
-      content: query || 'Generate a beautiful sunset over mountains',
-    },
-  ],
-  modalities: ['image', 'text']
-});
+  async ask(question) {
+    const response = await this.client.chat({
+      messages: [{ role: 'user', content: question }],
+       function_call: 'auto',
+     
+    });
 
-const response = apiResponse.choices[0].message;
-if (response.images) {
-  // Используем for...of вместо forEach для правильной работы с async
-  for (let index = 0; index < response.images.length; index++) {
-    const image = response.images[index];
-    const imageUrl = image.image_url.url; // Base64 data URL
-    console.log(`Generated image ${index + 1}: ${imageUrl.substring(0, 50)}...`);
-    
-    // Сохраняем картинку в папку img
-    const filename = `ai-${Date.now()}-${randomUUID()}-${index + 1}.png`;
+    const content = response.choices?.[0]?.message?.content ?? '';
+    console.log('AI content:', content);
+
+    const detectedImage = detectImage(content);
+    if (!detectedImage) {
+      // Нет изображения в ответе — вернём текст
+      return { type: 'text', content };
+    }
+
+    const image = await this.client.getImage(detectedImage.uuid);
+    console.log('Image meta:', image);
+
+    return { type: 'image', image };
+  }
+
+  /**
+   * Генерирует изображение и сохраняет его в папку img
+   * @param {string} prompt - Описание для генерации изображения
+   * @returns {Promise<string>} - Путь к сохраненному изображению (например, /img/ai-1234567890-uuid-1.png)
+   */
+  async createImg(prompt) {
     try {
-      const savedPath = await saveImageFromBase64(imageUrl, filename);
-      console.log(`✓ Картинка сохранена: ${savedPath}`);
+      // Генерируем изображение через ask()
+      const result = await this.ask(prompt);
+
+      // Если получили текст вместо изображения
+      if (result.type === 'text') {
+        throw new Error(result.content || 'Не удалось сгенерировать изображение. AI вернул текстовый ответ.');
+      }
+
+      // Получаем изображение
+      const imageData = result.image;
+      
+      // Проверяем наличие данных изображения
+      if (!imageData) {
+        throw new Error('Изображение не получено от AI');
+      }
+
+      // Создаем директорию img если её нет
+      // Нужно сохранять в server/src/img (а не в server/src/services/img)
+      const imgDir = path.join(__dirname, '../img');
+      try {
+        await fs.access(imgDir);
+      } catch {
+        await fs.mkdir(imgDir, { recursive: true });
+      }
+
+      // Генерируем уникальное имя файла
+      const timestamp = Date.now();
+      const uuid = imageData.uuid || Math.random().toString(36).substring(2, 15);
+      // Если content похож на JPEG (JFIF/FF D8) — сохраняем как .jpg
+      const ext =
+        typeof imageData?.content === 'string' &&
+        (imageData.content.startsWith('ÿØÿ') || imageData.content.includes('JFIF'))
+          ? '.jpg'
+          : '.png';
+
+      const filename = `ai-${timestamp}-${uuid}-1${ext}`;
+      const filepath = path.join(imgDir, filename);
+
+      // Сохраняем изображение
+      // imageData может быть Buffer или объектом с buffer/data/base64
+      let imageBuffer;
+      if (Buffer.isBuffer(imageData)) {
+        imageBuffer = imageData;
+      } else if (Buffer.isBuffer(imageData.content)) {
+        imageBuffer = imageData.content;
+      } else if (typeof imageData.content === 'string') {
+        // gigachat возвращает content как бинарную строку (latin1)
+        imageBuffer = Buffer.from(imageData.content, 'latin1');
+      } else if (imageData.buffer) {
+        imageBuffer = Buffer.isBuffer(imageData.buffer) 
+          ? imageData.buffer 
+          : Buffer.from(imageData.buffer);
+      } else if (imageData.data) {
+        imageBuffer = Buffer.isBuffer(imageData.data)
+          ? imageData.data
+          : Buffer.from(imageData.data);
+      } else if (imageData.base64) {
+        const base64Data = imageData.base64.replace(/^data:image\/\w+;base64,/, '');
+        imageBuffer = Buffer.from(base64Data, 'base64');
+      } else if (typeof imageData === 'string') {
+        // Пробуем получить как строку base64
+        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+        imageBuffer = Buffer.from(base64Data, 'base64');
+      } else {
+        throw new Error('Не удалось определить формат данных изображения');
+      }
+
+      if (!imageBuffer || imageBuffer.length === 0) {
+        throw new Error('Буфер изображения пуст');
+      }
+
+      await fs.writeFile(filepath, imageBuffer);
+
+      // Возвращаем путь для доступа через веб-сервер
+      const imageUrl = `/img/${filename}`;
+      console.log('Изображение сохранено:', imageUrl, 'Размер:', imageBuffer.length, 'байт');
+      
+      return imageUrl;
     } catch (error) {
-      console.error(`✗ Ошибка при сохранении картинки ${index + 1}:`, error.message);
+      console.error('Ошибка при создании изображения:', error);
+      throw error;
     }
   }
 }
-}
 
-// Экспорт для использования из контроллера (/api/ai/ask)
-module.exports = {
-  createImg,
-};
-
-// Запуск при прямом вызове файла (node src/services/ai.service.js "твой промпт")
+// Тест только при прямом запуске файла
 if (require.main === module) {
-  const prompt = process.argv.slice(2).join(' ').trim() || 'Гора Фудзи';
-  createImg(prompt).catch((error) => {
-    console.error('Ошибка:', error);
-    process.exitCode = 1;
-  });
+  const aiService = new AiService();
+  aiService
+    .ask('сгенерируй большого пса')
+    .then((result) => console.log('Result:', result))
+    .catch((err) => console.error('Ошибка:', err));
 }
+
+module.exports = new AiService();
