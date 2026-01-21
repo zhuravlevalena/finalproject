@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/shared/hooks/use-auth';
 import { Button } from '@/shared/ui/button';
 import { Loader2, Sparkles, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
+
 
 // Моковые карточки товаров с полной информацией
 const previewCards = [
@@ -97,7 +98,17 @@ const previewCards = [
 ];
 
 export default function Home(): React.JSX.Element {
+  const [isDark, setIsDark] = useState(false);
   const { isLoading: isAuthLoading } = useAuth();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateTheme = (): void => setIsDark(root.classList.contains('dark'));
+    updateTheme();
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   if (isAuthLoading) {
     return (
@@ -109,115 +120,123 @@ export default function Home(): React.JSX.Element {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center relative overflow-hidden px-4">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background z-0" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-background to-background z-0" />
 
-      <div className="relative z-10 max-w-6xl text-center space-y-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <h1 className="text-6xl md:text-8xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-b from-black to-black/50 mb-4 tracking-tighter drop-shadow-2xl">
-            Cardify
-          </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-            Создавайте профессиональные карточки товаров для маркетплейсов
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center relative z-10"
-        >
-          <Button
-            size="lg"
-            className="text-lg px-8 py-6 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30 cursor-pointer"
+        <div className="relative z-10 max-w-6xl text-center space-y-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
           >
-            <Sparkles className="mr-2 h-5 w-5" />
-            Начать работу
-          </Button>
-        </motion.div>
+            <h1 className="text-6xl md:text-8xl font-display font-bold mb-4 tracking-tighter drop-shadow-2xl dark:drop-shadow-[0_0_20px_rgba(255,255,255,0.35)]">
+              {isDark ? (
+                <span className="text-white">Cardify</span>
+              ) : (
+                <span className="text-transparent bg-clip-text bg-gradient-to-b from-black to-black/50">
+                  Cardify
+                </span>
+              )}
+            </h1>
+            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
+              Создавайте профессиональные карточки товаров для маркетплейсов
+            </p>
+          </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.6 }}
-          className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {previewCards.map((card, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 + index * 0.1, duration: 0.4 }}
-              whileHover={{
-                y: -8,
-                scale: 1.02,
-                transition: { duration: 0.3, ease: 'easeOut' },
-              }}
-              className="group rounded-xl overflow-hidden bg-white border border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center relative z-10"
+          >
+            <Button
+              size="lg"
+              className="text-lg px-8 py-6 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30 cursor-pointer"
             >
-              {/* Изображение товара */}
-              <div className="relative h-64 overflow-hidden bg-gray-100">
-                <img
-                  src={card.imageUrl}
-                  alt={card.title}
-                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                {/* Бейдж маркетплейса */}
-                <div className="absolute top-2 left-2">
-                  <span className="px-2 py-1 bg-white/90 backdrop-blur-sm rounded text-xs font-medium text-gray-700">
-                    {card.marketplace}
-                  </span>
-                </div>
-              </div>
+              <Sparkles className="mr-2 h-5 w-5" />
+              Начать работу
+            </Button>
+          </motion.div>
 
-              {/* Информация о товаре */}
-              <div className="p-4 space-y-2">
-                {/* Название товара */}
-                <h3 className="text-base font-semibold text-gray-900 line-clamp-2">{card.title}</h3>
-
-                {/* Рейтинг и отзывы */}
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium text-gray-900">{card.rating}</span>
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.6 }}
+            className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {previewCards.map((card, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 + index * 0.1, duration: 0.4 }}
+                whileHover={{
+                  y: -8,
+                  scale: 1.02,
+                  transition: { duration: 0.3, ease: 'easeOut' },
+                }}
+                className="group rounded-xl overflow-hidden bg-white border border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer"
+              >
+                {/* Изображение товара */}
+                <div className="relative h-64 overflow-hidden bg-gray-100">
+                  <img
+                    src={card.imageUrl}
+                    alt={card.title}
+                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  {/* Бейдж маркетплейса */}
+                  <div className="absolute top-2 left-2">
+                    <span className="px-2 py-1 bg-white/90 backdrop-blur-sm rounded text-xs font-medium text-gray-700">
+                      {card.marketplace}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500">({card.reviews} отзывов)</span>
                 </div>
 
-                {/* Описание */}
-                <p className="text-sm text-gray-600 line-clamp-2 leading-tight">
-                  {card.description}
-                </p>
+                {/* Информация о товаре */}
+                <div className="p-4 space-y-2">
+                  {/* Название товара */}
+                  <h3 className="text-base font-semibold text-gray-900 line-clamp-2">
+                    {card.title}
+                  </h3>
 
-                {/* Характеристики */}
-                <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-gray-700">Основные характеристики:</p>
-                  <ul className="space-y-0.5">
-                    {card.characteristics.slice(0, 2).map((char, idx) => (
-                      <li key={idx} className="text-xs text-gray-600 flex items-start gap-1.5">
-                        <span className="text-blue-500 mt-0.5">•</span>
-                        <span>{char}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                  {/* Рейтинг и отзывы */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm font-medium text-gray-900">{card.rating}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">({card.reviews} отзывов)</span>
+                  </div>
 
-                {/* Цена */}
-                <div className="flex items-baseline gap-2 pt-1.5 border-t border-gray-100">
-                  {card.oldPrice && (
-                    <span className="text-sm text-gray-400 line-through">{card.oldPrice}</span>
-                  )}
-                  <span className="text-xl font-bold text-gray-900">{card.price}</span>
+                  {/* Описание */}
+                  <p className="text-sm text-gray-600 line-clamp-2 leading-tight">
+                    {card.description}
+                  </p>
+
+                  {/* Характеристики */}
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-medium text-gray-700">Основные характеристики:</p>
+                    <ul className="space-y-0.5">
+                      {card.characteristics.slice(0, 2).map((char, idx) => (
+                        <li key={idx} className="text-xs text-gray-600 flex items-start gap-1.5">
+                          <span className="text-blue-500 mt-0.5">•</span>
+                          <span>{char}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Цена */}
+                  <div className="flex items-baseline gap-2 pt-1.5 border-t border-gray-100">
+                    {card.oldPrice && (
+                      <span className="text-sm text-gray-400 line-through">{card.oldPrice}</span>
+                    )}
+                    <span className="text-xl font-bold text-gray-900">{card.price}</span>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
     </div>
   );
 }
