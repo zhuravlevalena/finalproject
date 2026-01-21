@@ -5,6 +5,9 @@ export const userSchema = z.object({
   name: z.string(),
   email: z.string(),
   emailVerified: z.boolean().optional(),
+  birthDate: z.string().nullable().optional(),
+  gender: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
 });
 
 export const registerFormSchema = z.object({

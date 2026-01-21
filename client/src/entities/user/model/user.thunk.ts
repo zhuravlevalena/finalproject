@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import UserService from "../api/user.service";
-import type { LoginForm, RegisterForm } from "./user.types";
+import type { LoginForm, RegisterForm, User } from "./user.types";
 
 export const registerThunk = createAsyncThunk('user/register', async (data: RegisterForm) => {
     // При регистрации с подтверждением по коду, пользователь не сохраняется в Redux
@@ -31,3 +31,17 @@ export const refreshThunk = createAsyncThunk(
 );
 
 export const logoutThunk = createAsyncThunk('user/logout', () => UserService.logout());
+
+export const updateProfileThunk = createAsyncThunk<
+  User,
+  {
+    name?: string;
+    birthDate?: string | null;
+    gender?: string | null;
+    phone?: string | null;
+    email?: string;
+  }
+>('user/updateProfile', async (data) => {
+  const updated = await UserService.updateProfile(data);
+  return updated;
+});

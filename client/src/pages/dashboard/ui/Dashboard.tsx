@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'wouter';
 import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
 import { fetchProductCardsThunk } from '@/entities/productcard/model/productcard.thunk';
@@ -6,6 +6,293 @@ import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Plus, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fabric } from 'fabric';
+
+// Компонент для отображения карточки со слайдами
+function CardSlideViewer({
+  card,
+  slides,
+  slideCount,
+  cardSize,
+}: {
+  card: {
+    id: number;
+    title?: string;
+    status: string;
+    createdAt: string;
+    marketplace?: { name?: string };
+    generatedImage?: { id?: number; url?: string };
+  };
+  slides: {
+    canvasData?: {
+      fabric?: Record<string, unknown>;
+      meta?: Record<string, unknown>;
+    };
+  }[];
+  slideCount: number;
+  cardSize: string;
+}): React.JSX.Element {
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [slideImages, setSlideImages] = useState<Map<number, string>>(new Map());
+
+  // Функция для рендеринга слайда в изображение
+  const renderSlideToImage = useCallback(async (index: number): Promise<string | null> => {
+    const slide = slides[index];
+
+    // Если это первый слайд и есть generatedImage, используем его
+    if (index === 0 && card.generatedImage?.url) {
+      const url = card.generatedImage.url.startsWith('http')
+        ? card.generatedImage.url
+        : `${window.location.origin}${card.generatedImage.url}`;
+      return url;
+    }
+
+    // Если нет данных canvas для этого слайда, возвращаем null
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!slide?.canvasData?.fabric) {
+      return null;
+    }
+    const slideCanvasData = slide.canvasData;
+
+    // Проверяем, есть ли уже закэшированное изображение
+    if (slideImages.has(index)) {
+      return slideImages.get(index) ?? null;
+    }
+
+    try {
+      // Создаем временный canvas
+      const [width, height] = cardSize.split('x').map(Number);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const fabricCanvas = new fabric.Canvas(canvas, {
+        width,
+        height,
+        backgroundColor: '#ffffff',
+      });
+
+      // Загружаем данные из fabric JSON
+      await new Promise<void>((resolve, reject) => {
+        fabricCanvas.loadFromJSON(
+          slideCanvasData.fabric,
+          () => {
+            fabricCanvas.renderAll();
+            resolve();
+          },
+          reject,
+        );
+      });
+
+      // Конвертируем в data URL
+      const dataURL = fabricCanvas.toDataURL({
+        format: 'png',
+        quality: 1,
+      });
+
+      // Очищаем canvas
+      fabricCanvas.dispose();
+
+      // Кэшируем изображение
+      setSlideImages((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(index, dataURL);
+        return newMap;
+      });
+
+      return dataURL;
+    } catch (error) {
+      console.error(`Error rendering slide ${String(index)}:`, error);
+      return null;
+    }
+  }, [card.generatedImage?.url, slides, slideImages, cardSize]);
+
+  // Загружаем изображения для всех слайдов при монтировании
+  useEffect(() => {
+    const loadAllSlides = async (): Promise<void> => {
+      const promises: Promise<void>[] = [];
+      for (let i = 0; i < slideCount; i++) {
+        promises.push(
+          renderSlideToImage(i).then((imageUrl) => {
+            if (imageUrl) {
+              setSlideImages((prev) => {
+                const newMap = new Map(prev);
+                newMap.set(i, imageUrl);
+                return newMap;
+              });
+            }
+          }),
+        );
+      }
+      await Promise.all(promises);
+    };
+
+    void loadAllSlides();
+  }, [slideCount, slides, cardSize, renderSlideToImage]);
+
+  // Получаем изображение текущего слайда
+  const getCurrentSlideImage = (): string | null => slideImages.get(currentSlideIndex) ?? null;
+
+  const hasMultipleSlides = slideCount > 1;
+  const currentImage = getCurrentSlideImage();
+
+  return (
+    <div className="relative">
+      <Link href={`/edit-card/${String(card.id)}`}>
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+          {/* Показываем слайды */}
+          {hasMultipleSlides ? (
+            <div className="relative">
+              {currentImage ? (
+                <div className="relative">
+                  <img
+                    src={currentImage}
+                    alt={`${card.title ?? 'Карточка товара'} - Слайд ${String(currentSlideIndex + 1)}`}
+                    className="w-full h-64 object-contain bg-gray-100"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML =
+                          '<div class="w-full h-64 bg-gray-100 flex items-center justify-center"><p class="text-gray-400">Ошибка загрузки изображения</p></div>';
+                      }
+                    }}
+                  />
+                  {/* Навигация по слайдам */}
+                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2 items-center bg-black/50 rounded-full px-3 py-1.5 z-10">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1));
+                      }}
+                      disabled={currentSlideIndex === 0}
+                      className="text-white hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="text-white text-xs mx-2">
+                      {currentSlideIndex + 1} / {slideCount}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCurrentSlideIndex(Math.min(slideCount - 1, currentSlideIndex + 1));
+                      }}
+                      disabled={currentSlideIndex === slideCount - 1}
+                      className="text-white hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {/* Индикаторы слайдов */}
+                  <div className="absolute top-2 left-2 flex gap-1 z-10">
+                    {Array.from({ length: slideCount }).map((_, index) => (
+                      <div
+                        key={`slide-indicator-${String(index)}`}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          index === currentSlideIndex ? 'bg-blue-500' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  {/* Статус */}
+                  <div className="absolute top-2 right-2 flex gap-2 z-10">
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        card.status === 'completed'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {card.status === 'completed' ? 'Завершена' : 'Черновик'}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+                  <p className="text-gray-400">Загрузка слайда {currentSlideIndex + 1}...</p>
+      </div>
+              )}
+        </div>
+      ) : (
+            // Один слайд - обычное отображение
+            <>
+              {currentImage ? (
+                    <div className="relative">
+                      <img
+                    src={currentImage}
+                    alt={card.title ?? 'Карточка товара'}
+                        className="w-full h-64 object-contain bg-gray-100"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            parent.innerHTML =
+                              '<div class="w-full h-64 bg-gray-100 flex items-center justify-center"><p class="text-gray-400">Ошибка загрузки изображения</p></div>';
+                          }
+                        }}
+                      />
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        <span
+                          className={`px-2 py-1 rounded text-xs ${
+                            card.status === 'completed'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {card.status === 'completed' ? 'Завершена' : 'Черновик'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+                      <p className="text-gray-400">Нет изображения</p>
+                    </div>
+              )}
+            </>
+                  )}
+
+                  <div className="p-4">
+            <h3 className="font-semibold text-lg mb-2">{card.title ?? 'Без названия'}</h3>
+                    <p className="text-sm text-muted-foreground mb-2">
+              {card.marketplace?.name ?? 'Без маркетплейса'}
+            </p>
+            {hasMultipleSlides && (
+              <p className="text-xs text-blue-600 mb-2">
+                {slideCount}{' '}
+                {(() => {
+                  if (slideCount === 1) return 'слайд';
+                  if (slideCount < 5) return 'слайда';
+                  return 'слайдов';
+                })()}
+              </p>
+            )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(card.createdAt).toLocaleDateString()}
+                      </span>
+              {currentImage && (
+                <a
+                  href={currentImage}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                        >
+                          <Eye className="h-3 w-3" />
+                          Просмотр
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+    </div>
+  );
+}
 
 export default function Dashboard(): React.JSX.Element {
   const dispatch = useAppDispatch();
@@ -20,234 +307,116 @@ export default function Dashboard(): React.JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">Загрузка...</div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">Загрузка...</div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* v0-style header */}
-      <header className="border-b border-border/50 bg-card/60 backdrop-blur-sm sticky top-0 z-10">
-        <div className="mx-auto max-w-7xl px-6 py-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-1">
-              <h1 className="text-xl font-semibold tracking-tight">Мои карточки</h1>
-              <p className="text-sm text-muted-foreground">AI-карточки для маркетплейсов</p>
-            </div>
+  const completedCount = cards.filter((c) => c.status === 'completed').length;
+  const draftCount = cards.filter((c) => c.status !== 'completed').length;
 
-            <Link href="/create-card">
-              <Button className="sm:w-auto w-full">
-                <Plus className="mr-2 h-4 w-4" />
-                Создать карточку
-              </Button>
-            </Link>
+  return (
+    <div className="container mx-auto px-4 py-8 space-y-6">
+      {/* Верхняя панель со статистикой */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Мои карточки</h1>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>
+              Всего: <span className="font-semibold text-foreground">{cards.length}</span>
+            </span>
+            {completedCount > 0 && (
+              <span>
+                Завершено: <span className="font-semibold text-emerald-600">{completedCount}</span>
+              </span>
+            )}
+            {draftCount > 0 && (
+              <span>
+                Черновики: <span className="font-semibold text-amber-600">{draftCount}</span>
+              </span>
+            )}
           </div>
         </div>
-      </header>
+        <div className="sm:shrink-0">
+          <Link href="/create-card">
+            <Button className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              Создать карточку
+            </Button>
+          </Link>
+        </div>
+      </div>
 
-      {/* main content */}
-      <main className="mx-auto max-w-7xl px-6 py-8">
-        {cards.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="rounded-full bg-muted p-4 mb-4">
-              <Plus className="h-8 w-8 text-muted-foreground" />
+      {cards.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">У вас пока нет карточек</p>
+          <Link href="/create-card">
+            <Button>Создать первую карточку</Button>
+          </Link>
             </div>
-            <h3 className="text-lg font-medium mb-1">У вас пока нет карточек</h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-              Создайте первую AI-карточку товара и начните наполнять каталог
-            </p>
-            <Link href="/create-card">
-              <Button>Создать первую карточку</Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cards.map((card) => {
-              const canvasData = card.canvasData as
-                | {
-                    meta?: {
-                      slides?: {
-                        canvasData?: {
-                          fabric?: Record<string, unknown>;
-                          meta?: Record<string, unknown>;
-                        };
-                      }[];
-                      slideCount?: number;
-                      cardSize?: string;
-                    };
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {cards.map((card) => {
+            // Извлекаем данные о слайдах из canvasData.meta
+            const canvasData = card.canvasData as
+              | {
+                  meta?: {
+                    slides?: {
+                      canvasData?: {
+                        fabric?: Record<string, unknown>;
+                        meta?: Record<string, unknown>;
+                      };
+                    }[];
+                    slideCount?: number;
+                    cardSize?: string;
+                  };
+                }
+              | null
+              | undefined;
+            const meta = canvasData?.meta;
+            const slides = (meta?.slides ?? []) as {
+              canvasData?: {
+                fabric?: Record<string, unknown>;
+                meta?: Record<string, unknown>;
+              };
+            }[];
+            const slideCount = meta?.slideCount ?? 1;
+            const cardSize = meta?.cardSize ?? '1024x768';
+
+            const cardForViewer: {
+              id: number;
+              title?: string;
+              status: string;
+              createdAt: string;
+              marketplace?: { name?: string };
+              generatedImage?: { id?: number; url?: string };
+            } = {
+              id: card.id,
+              title: card.title,
+              status: card.status,
+              createdAt: card.createdAt,
+              marketplace: card.marketplace,
+              generatedImage: card.generatedImage
+                ? {
+                    id: (card.generatedImage as { id?: number; url?: string }).id,
+                    url: (card.generatedImage as { id?: number; url?: string }).url,
                   }
-                | null
-                | undefined;
+                : undefined,
+            };
 
-              const meta = canvasData?.meta;
-              const slides = meta?.slides || [];
-              const slideCount = meta?.slideCount || 1;
-              const cardSize = meta?.cardSize || '1024x768';
-
-              return (
-                <CardSlideViewer
-                  key={card.id}
-                  card={card}
-                  slides={slides}
-                  slideCount={slideCount}
-                  cardSize={cardSize}
-                />
-              );
-            })}
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
-
-/* ===========================
-   CardSlideViewer — БЕЗ ИЗМЕНЕНИЙ
-   =========================== */
-
-function CardSlideViewer({
-  card,
-  slides,
-  slideCount,
-  cardSize,
-}: {
-  card: {
-    id: number;
-    title?: string;
-    status: string;
-    createdAt: string;
-    marketplace?: { name?: string };
-    generatedImage?: { url?: string };
-  };
-  slides: {
-    canvasData?: {
-      fabric?: Record<string, unknown>;
-      meta?: Record<string, unknown>;
-    };
-  }[];
-  slideCount: number;
-  cardSize: string;
-}): React.JSX.Element {
-  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [slideImages, setSlideImages] = useState<Map<number, string>>(new Map());
-  const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
-
-  const renderSlideToImage = async (index: number): Promise<string | null> => {
-    const slide = slides[index];
-
-    if (index === 0 && card.generatedImage?.url) {
-      return card.generatedImage.url.startsWith('http')
-        ? card.generatedImage.url
-        : `${window.location.origin}${card.generatedImage.url}`;
-    }
-
-    if (!slide?.canvasData?.fabric) return null;
-
-    if (slideImages.has(index)) {
-      return slideImages.get(index) || null;
-    }
-
-    try {
-      const [width, height] = cardSize.split('x').map(Number);
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-
-      const fabricCanvas = new fabric.Canvas(canvas, {
-        width,
-        height,
-        backgroundColor: '#ffffff',
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        fabricCanvas.loadFromJSON(
-          slide.canvasData!.fabric!,
-          () => {
-            fabricCanvas.renderAll();
-            resolve();
-          },
-          reject,
-        );
-      });
-
-      const dataURL = fabricCanvas.toDataURL({ format: 'png', quality: 1 });
-      fabricCanvas.dispose();
-
-      setSlideImages((prev) => {
-        const next = new Map(prev);
-        next.set(index, dataURL);
-        return next;
-      });
-
-      return dataURL;
-    } catch {
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    const load = async () => {
-      for (let i = 0; i < slideCount; i++) {
-        const img = await renderSlideToImage(i);
-        if (img) {
-          setSlideImages((prev) => {
-            const next = new Map(prev);
-            next.set(i, img);
-            return next;
-          });
-        }
-      }
-    };
-    void load();
-  }, [slideCount, slides, cardSize]);
-
-  const currentImage = slideImages.get(currentSlideIndex) || null;
-  const hasMultipleSlides = slideCount > 1;
-
-  return (
-    <div className="relative">
-      <Link href={`/edit-card/${String(card.id)}`}>
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-          {currentImage ? (
-            <img
-              src={currentImage}
-              alt={card.title || 'Карточка товара'}
-              className="w-full h-64 object-contain bg-gray-100"
-            />
-          ) : (
-            <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
-              <span className="text-muted-foreground">Нет изображения</span>
-            </div>
-          )}
-
-          <div className="p-4">
-            <h3 className="font-semibold text-lg mb-1">{card.title || 'Без названия'}</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              {card.marketplace?.name || 'Без маркетплейса'}
-            </p>
-
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">
-                {new Date(card.createdAt).toLocaleDateString()}
-              </span>
-              {currentImage && (
-                <a
-                  href={currentImage}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-                >
-                  <Eye className="h-3 w-3" />
-                  Просмотр
-                </a>
-              )}
-            </div>
-          </div>
-        </Card>
-      </Link>
+            return (
+              <CardSlideViewer
+                key={card.id}
+                card={cardForViewer}
+                slides={slides}
+                slideCount={slideCount}
+                cardSize={cardSize}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

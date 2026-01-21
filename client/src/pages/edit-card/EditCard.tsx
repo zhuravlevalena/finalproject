@@ -64,8 +64,8 @@ export default function EditCard(): React.JSX.Element {
       | undefined;
 
     const meta = canvasData?.meta;
-    const slidesData = meta?.slides || [];
-    const slideCount = meta?.slideCount || 1;
+    const slidesData = meta?.slides ?? [];
+    const slideCount = meta?.slideCount ?? 1;
 
     // Инициализируем массив слайдов
     const loadedSlides: SlideData[] = [];
@@ -153,7 +153,7 @@ export default function EditCard(): React.JSX.Element {
   });
 
   // Сохранение текущего слайда перед переключением
-  const saveCurrentSlideCanvas = () => {
+  const saveCurrentSlideCanvas = (): void => {
     if (!cardEditorRef.current?.getCanvasData) return;
     const canvasData = cardEditorRef.current.getCanvasData();
     if (canvasData) {
@@ -162,8 +162,8 @@ export default function EditCard(): React.JSX.Element {
         newSlides[currentSlideIndex] = {
           ...newSlides[currentSlideIndex],
           canvasData: {
-            fabric: canvasData.fabric || null,
-            meta: canvasData.meta || {},
+            fabric: canvasData.fabric ?? null,
+            meta: canvasData.meta ?? {},
           },
         };
         return newSlides;
@@ -172,7 +172,7 @@ export default function EditCard(): React.JSX.Element {
   };
 
   // Обработчик переключения слайда
-  const handleSlideChange = (newIndex: number) => {
+  const handleSlideChange = (newIndex: number): void => {
     if (newIndex === currentSlideIndex) return;
     saveCurrentSlideCanvas();
     setCurrentSlideIndex(newIndex);
@@ -181,7 +181,7 @@ export default function EditCard(): React.JSX.Element {
   const handleSave = async (
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
-  ) => {
+  ): Promise<void> => {
     if (!cardId) return;
 
     // Сохраняем данные текущего слайда
@@ -203,12 +203,12 @@ export default function EditCard(): React.JSX.Element {
       | null
       | undefined;
     const meta = existingCanvasData?.meta;
-    const slideCount = meta?.slideCount || slides.length;
-    const cardSize = meta?.cardSize || '1024x768';
+    const slideCount = meta?.slideCount ?? slides.length;
+    const cardSize = meta?.cardSize ?? '1024x768';
 
     // Создаем массив всех слайдов с их данными
     const slidesData = updatedSlides.map((slide, index) => ({
-      canvasData: slide.canvasData || { fabric: null, meta: {} },
+      canvasData: slide.canvasData ?? { fabric: undefined, meta: {} },
       imageId: slide.uploadedImage?.id,
       backgroundImageId: slide.backgroundImage?.id,
       slideIndex: index,
@@ -216,7 +216,7 @@ export default function EditCard(): React.JSX.Element {
 
     updateCardMutation.mutate({
       canvasData: {
-        fabric: null,
+        fabric: undefined,
         meta: {
           slideCount,
           cardSize,
@@ -227,7 +227,7 @@ export default function EditCard(): React.JSX.Element {
     });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     if (!cardId) return;
 
     setIsDeleting(true);
@@ -286,11 +286,13 @@ export default function EditCard(): React.JSX.Element {
     | undefined;
   const meta = canvasData?.meta;
 
+  // Безопасное извлечение cardSize
   let cardSize = '1024x768';
   if (meta && typeof meta === 'object' && 'cardSize' in meta && typeof meta.cardSize === 'string') {
     cardSize = meta.cardSize;
   }
 
+  // Безопасное извлечение slideCount
   let slideCount = 1;
   if (
     meta &&
@@ -301,7 +303,7 @@ export default function EditCard(): React.JSX.Element {
     slideCount = meta.slideCount;
   }
 
-  const currentSlide = slides[currentSlideIndex] || slides[0];
+  const currentSlide = slides[currentSlideIndex] ?? slides[0];
   const hasMultipleSlides = slideCount > 1;
 
   return (
@@ -356,7 +358,7 @@ export default function EditCard(): React.JSX.Element {
               )}
 
               <CardEditor
-                key={`slide-${currentSlideIndex}-${cardSize}`}
+                key={`slide-${String(currentSlideIndex)}-${cardSize}`}
                 ref={cardEditorRef}
                 card={
                   currentSlide.canvasData
@@ -366,8 +368,8 @@ export default function EditCard(): React.JSX.Element {
                     : undefined
                 }
                 onSave={handleSave}
-                initialImage={currentSlide.uploadedImage || undefined}
-                backgroundImage={currentSlide.backgroundImage || undefined}
+                initialImage={currentSlide.uploadedImage ?? undefined}
+                backgroundImage={currentSlide.backgroundImage ?? undefined}
                 cardSize={cardSize}
                 slideCount={slideCount}
               />
@@ -381,13 +383,13 @@ export default function EditCard(): React.JSX.Element {
                 <div>
                   <p className="text-sm font-medium">Маркетплейс</p>
                   <p className="text-sm text-muted-foreground">
-                    {card.marketplace?.name || 'Не указан'}
+                    {card.marketplace?.name ?? 'Не указан'}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">Шаблон</p>
                   <p className="text-sm text-muted-foreground">
-                    {card.template?.name || 'Не указан'}
+                    {card.template?.name ?? 'Не указан'}
                   </p>
                 </div>
                 <div>
