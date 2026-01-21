@@ -162,7 +162,7 @@ export default function TemplateEditorPage(): React.JSX.Element {
 
     // Скачивание изображения
     const link = document.createElement('a');
-    link.download = `template-${params?.id || 'export'}.png`;
+    link.download = `template-${params?.id ?? 'export'}.png`;
     link.href = dataURL;
     link.click();
   };

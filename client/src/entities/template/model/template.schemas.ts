@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { LayoutSchema } from '@/entities/layout/model/layout.schemas';
 
 // Базовая схема для marketplace (избегаем циклических зависимостей)
 const marketplaceRefSchema = z.object({
@@ -21,6 +22,9 @@ export const templateSchema = z.object({
   isDefault: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  // Связанные макеты (для удобства на фронте)
+  // Используем z.any() + типизацию через TemplateSchema, чтобы избежать циклической зависимости в zod
+  layouts: z.any().optional(),
 });
 
 export const createTemplateSchema = z.object({

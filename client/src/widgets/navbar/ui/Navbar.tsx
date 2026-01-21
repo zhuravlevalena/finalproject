@@ -149,8 +149,9 @@ export function Navbar(): React.JSX.Element {
   };
 
   return (
-    <nav className="relative z-50 border-b border-white/10 bg-card/70 backdrop-blur-xl">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center gap-3">
+    <>
+      <nav className="relative z-50 border-b border-white/10 bg-card/70 backdrop-blur-xl">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center gap-3">
         <div className="flex items-center gap-4">
           <button
             onClick={() => {
@@ -254,6 +255,7 @@ export function Navbar(): React.JSX.Element {
           )}
         </div>
 
+        {/* Mobile burger */}
         <button
           type="button"
           className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-full border border-white/25 bg-card/70 hover:bg-white/10  transition-colors"
@@ -264,8 +266,9 @@ export function Navbar(): React.JSX.Element {
         </button>
       </div>
 
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-white/10 bg-card/90 backdrop-blur-2xl nav-slide-in">
+      {/* Mobile menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-white/10 bg-card/90 backdrop-blur-2xl nav-slide-in">
           <div className="container mx-auto px-4 py-3 flex flex-col gap-2">
             {user ? (
               <>
@@ -331,10 +334,11 @@ export function Navbar(): React.JSX.Element {
               </>
             )}
           </div>
-        </div>
-      )}
-
+          </div>
+        )}
+      </nav>
+      {/* Модалка выбора шаблонов */}
       <TemplateSelectorModal isOpen={isModalOpen} onClose={() => dispatch(setModalOpen(false))} />
-    </nav>
+    </>
   );
 }

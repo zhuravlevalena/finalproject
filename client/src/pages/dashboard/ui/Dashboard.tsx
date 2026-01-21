@@ -4,7 +4,7 @@ import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
 import { fetchProductCardsThunk } from '@/entities/productcard/model/productcard.thunk';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
-import { Plus, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Eye } from 'lucide-react';
 import { fabric } from 'fabric';
 
 // Компонент для отображения карточки со слайдами
