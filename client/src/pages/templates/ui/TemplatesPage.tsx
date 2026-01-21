@@ -1,14 +1,16 @@
 import { useLocation } from 'wouter';
 import { useEffect, useState } from 'react';
+import { fabric } from 'fabric';
 import { layoutService } from '@/entities/layout/api/layout.service';
 import type { LayoutSchema } from '@/entities/layout/model/layout.schemas';
 
 export default function TemplatesPage(): React.JSX.Element {
   const [, setLocation] = useLocation();
-  const [templateId, setTemplateId] = useState<number | null>(null);
   const [layouts, setLayouts] = useState<LayoutSchema[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [layoutPreviews, setLayoutPreviews] = useState<Map<number, string>>(new Map());
+  const [previewsRendered, setPreviewsRendered] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -20,14 +22,11 @@ export default function TemplatesPage(): React.JSX.Element {
       return;
     }
 
-    const id = parseInt(templateIdParam, 10);
-    setTemplateId(id);
-
     // Загружаем макеты для шаблона
     const fetchLayouts = async (): Promise<void> => {
       try {
         setLoading(true);
-        const data = await layoutService.getLayoutsByTemplateId(id);
+        const data = await layoutService.getLayoutsByTemplateId(parseInt(templateIdParam, 10));
         setLayouts(data);
       } catch (err) {
         console.error('Error fetching layouts:', err);
@@ -39,6 +38,198 @@ export default function TemplatesPage(): React.JSX.Element {
 
     void fetchLayouts();
   }, []);
+
+  // Рендерим превью для макетов из canvasData
+  useEffect(() => {
+    const renderPreviews = async (): Promise<void> => {
+      const previews = new Map<number, string>();
+
+      console.log(`[TemplatesPage] Starting to render previews for ${layouts.length} layouts`);
+
+      for (const layout of layouts) {
+        // Рендерим превью из canvasData для всех макетов, у которых есть canvasData
+        if (!layout.canvasData) {
+          console.log(`[TemplatesPage] Skipping layout ${layout.id} (${layout.name}) - no canvasData`);
+          continue;
+        }
+
+        console.log(`[TemplatesPage] Rendering preview for layout ${layout.id} (${layout.name})`);
+
+        try {
+          // Парсим canvasData
+          let canvasData: { version?: string; objects?: unknown[] } | null = null;
+          if (typeof layout.canvasData === 'string') {
+            canvasData = JSON.parse(layout.canvasData);
+          } else if (typeof layout.canvasData === 'object') {
+            canvasData = layout.canvasData as { version?: string; objects?: unknown[] };
+          }
+
+          if (!canvasData || !canvasData.objects || !Array.isArray(canvasData.objects)) {
+            console.warn(`[TemplatesPage] Layout ${layout.id} has invalid canvasData structure`);
+            continue;
+          }
+
+          console.log(`[TemplatesPage] Layout ${layout.id} has ${canvasData.objects.length} objects`);
+
+          // Преобразуем пути к изображениям в полные URL и добавляем crossOrigin для CORS
+          const processedObjects = canvasData.objects.map((obj: unknown) => {
+            if (typeof obj === 'object' && obj !== null) {
+              const imageObj = obj as { type?: string; src?: string; crossOrigin?: string };
+              if (imageObj.type === 'image' && imageObj.src) {
+                let imageSrc = imageObj.src;
+                if (imageSrc.startsWith('/')) {
+                  imageSrc = `http://localhost:3000${imageSrc}`;
+                }
+                // Устанавливаем crossOrigin для избежания SecurityError при toDataURL
+                return { ...imageObj, src: imageSrc, crossOrigin: 'anonymous' };
+              }
+            }
+            return obj;
+          });
+
+          const processedCanvasData = {
+            ...canvasData,
+            objects: processedObjects,
+          };
+
+          // Создаем временный canvas для рендеринга
+          const canvas = document.createElement('canvas');
+          canvas.width = 900;
+          canvas.height = 1200;
+
+          // Проверяем, что canvas создан правильно
+          if (!canvas || !canvas.getContext) {
+            console.warn(`Could not create canvas for layout ${layout.id}`);
+            continue;
+          }
+
+          const fabricCanvas = new fabric.Canvas(canvas, {
+            width: 900,
+            height: 1200,
+            backgroundColor: '#ffffff',
+          });
+
+          // Проверяем, что fabricCanvas создан правильно
+          if (!fabricCanvas?.getElement?.()) {
+            console.warn(`Could not create fabric canvas for layout ${layout.id}`);
+            continue;
+          }
+
+          // Используем fabric.util.enlivenObjects для правильной загрузки изображений
+          await new Promise<void>((resolve) => {
+            fabric.util.enlivenObjects(
+              processedCanvasData.objects,
+              async (enlivenedObjects: fabric.Object[]) => {
+                try {
+                  // Очищаем canvas и добавляем загруженные объекты
+                  fabricCanvas.clear();
+                  enlivenedObjects.forEach((obj: fabric.Object) => {
+                    // Устанавливаем crossOrigin для изображений
+                    if (obj.type === 'image') {
+                      const img = obj as fabric.Image;
+                      const element = img.getElement();
+                      if (element) {
+                        element.crossOrigin = 'anonymous';
+                      }
+                    }
+                    fabricCanvas.add(obj);
+                  });
+                  fabricCanvas.renderAll();
+
+                  // Ждем загрузки всех изображений
+                  const images = fabricCanvas.getObjects('image') as fabric.Image[];
+                  
+                  if (images.length > 0) {
+                    await Promise.all(
+                      images.map(
+                        (img) =>
+                          new Promise<void>((imgResolve) => {
+                            const element = img.getElement();
+                            if (element) {
+                              // Устанавливаем crossOrigin для избежания SecurityError
+                              if (!element.crossOrigin) {
+                                element.crossOrigin = 'anonymous';
+                              }
+                              const imgEl = element instanceof HTMLImageElement ? element : null;
+                              if (imgEl?.complete && imgEl.naturalWidth > 0) {
+                                imgResolve();
+                              } else if (imgEl) {
+                                const onLoad = (): void => {
+                                  imgEl.removeEventListener('load', onLoad);
+                                  imgEl.removeEventListener('error', onError);
+                                  imgResolve();
+                                };
+                                const onError = (): void => {
+                                  imgEl.removeEventListener('load', onLoad);
+                                  imgEl.removeEventListener('error', onError);
+                                  imgResolve();
+                                };
+                                imgEl.addEventListener('load', onLoad);
+                                imgEl.addEventListener('error', onError);
+                                setTimeout(() => {
+                                  imgEl.removeEventListener('load', onLoad);
+                                  imgEl.removeEventListener('error', onError);
+                                  imgResolve();
+                                }, 5000);
+                              } else {
+                                imgResolve();
+                              }
+                            } else {
+                              imgResolve();
+                            }
+                          }),
+                      ),
+                    );
+                  }
+
+                  // Проверяем, что canvas все еще валиден перед рендерингом
+                  if (fabricCanvas.getElement?.() && fabricCanvas.getContext()) {
+                    fabricCanvas.renderAll();
+                    
+                    // Конвертируем в data URL
+                    const dataURL = fabricCanvas.toDataURL({
+                      format: 'png',
+                      quality: 0.8,
+                      multiplier: 0.3,
+                    });
+                    
+                    previews.set(layout.id, dataURL);
+                    console.log(`[TemplatesPage] Successfully rendered preview for layout ${layout.id} (${layout.name})`);
+                  } else {
+                    console.warn(`[TemplatesPage] Canvas invalid for layout ${layout.id} before rendering`);
+                  }
+                } catch (renderErr) {
+                  console.warn(`Error rendering layout ${layout.id}:`, renderErr);
+                } finally {
+                  // Безопасная очистка offscreen canvas
+                  try {
+                    fabricCanvas.clear();
+                  } catch (cleanupErr) {
+                    // Игнорируем ошибки очистки
+                  }
+                  resolve();
+                }
+              },
+              'fabric',
+            );
+          });
+        } catch (err) {
+          console.warn(`Could not render preview for layout ${layout.id}:`, err);
+        }
+      }
+
+      setLayoutPreviews(previews);
+      setPreviewsRendered(true);
+      console.log(
+        `[TemplatesPage] Finished rendering previews. Generated ${previews.size} previews`,
+      );
+    };
+
+    if (layouts.length > 0) {
+      setPreviewsRendered(false);
+      void renderPreviews();
+    }
+  }, [layouts]);
 
   const handleLayoutSelect = (layoutId: number): void => {
     setLocation(`/layout-editor/${layoutId}`);
@@ -103,15 +294,27 @@ export default function TemplatesPage(): React.JSX.Element {
               className="border-2 border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group"
               onClick={() => handleLayoutSelect(layout.id)}
             >
-              <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
-                {layout.preview ? (
+              <div className="aspect-[3/4] bg-gray-100 overflow-hidden relative">
+                {/* 1. Если есть успешное превью из canvasData – показываем его */}
+                {layoutPreviews.has(layout.id) && (
                   <img
-                    src={layout.preview}
+                    src={layoutPreviews.get(layout.id)!}
                     alt={layout.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform"
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                )}
+
+                {/* 2. Если превью ещё рендерятся и для этого макета есть canvasData, но нет готового превью – показываем спиннер */}
+                {!previewsRendered && !layoutPreviews.has(layout.id) && layout.canvasData && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                    <div className="text-xs text-gray-500">Загрузка превью...</div>
+                  </div>
+                )}
+
+                {/* 3. Когда все рендеры завершены, но для макета нет canvas-превью – показываем плейсхолдер
+                      (не показываем layout.preview для макетов с canvasData) */}
+                {previewsRendered && !layoutPreviews.has(layout.id) && !layout.canvasData && (
+                  <div className="preview-placeholder absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
                     <svg
                       className="text-gray-400"
                       width="80"
