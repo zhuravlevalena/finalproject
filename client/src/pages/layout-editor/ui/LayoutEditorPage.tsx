@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import { useAppDispatch, useAppSelector } from '@/shared/lib/hooks';
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
@@ -41,7 +41,9 @@ const MARKETPLACE_RULES: Record<
       'Разрешение: не менее 300×300 пикселей',
       'Размер файла: не более 10 МБ',
     ],
-    infographicAllowed: ['Инфографика используется в основном для цифровых товаров, которые невозможно сфотографировать.'],
+    infographicAllowed: [
+      'Инфографика используется в основном для цифровых товаров, которые невозможно сфотографировать.',
+    ],
     infographicForbidden: [
       'Логотип магазина или маркетплейса (логотип бренда можно)',
       'Цены и скидки',
@@ -177,7 +179,9 @@ function collectTextWarnings(
       });
       if (matched.length > 0) {
         const unique = Array.from(new Set(matched));
-        warnings.push(`Текст "${text}" содержит потенциально запрещённые элементы: ${unique.join(', ')}`);
+        warnings.push(
+          `Текст "${text}" содержит потенциально запрещённые элементы: ${unique.join(', ')}`,
+        );
       }
     }
 
@@ -254,64 +258,45 @@ export default function LayoutEditorPage(): React.JSX.Element {
     try {
       if (!layout) return;
 
-      // Мягкая проверка текста на соответствие требованиям маркетплейса
-      const textWarnings = collectTextWarnings(canvasData, selectedMarketplaceSlug);
-      if (textWarnings.length > 0) {
-        // eslint-disable-next-line no-alert
-        alert(
-          `Обратите внимание: найден(ы) потенциально запрещённые элементы для выбранного маркетплейса:\n\n- ${textWarnings.join(
-            '\n- ',
-          )}\n\nКарточка всё равно будет сохранена, но при модерации такие формулировки могут вызвать отказ.`,
-        );
-      }
+      // Нормализуем canvasData в формат слайдов (совместимость с EditCard)
+      const normalizedCanvasData = canvasData
+        ? {
+            fabric: canvasData.fabric ?? null,
+            meta: {
+              ...(canvasData.meta ?? {}),
+              cardSize: canvasData.meta?.cardSize ?? cardSize,
+              slideCount: 1,
+              slides: [
+                {
+                  slideIndex: 0,
+                  canvasData: {
+                    fabric: canvasData.fabric ?? null,
+                    meta: canvasData.meta ?? {},
+                  },
+                },
+              ],
+            },
+          }
+        : undefined;
 
       // Создаем новую карточку на основе макета
       const cardData = {
         title: `Карточка из макета: ${layout.name}`,
         marketplaceId: selectedMarketplaceId ?? layout.template?.marketplaceId,
         templateId: layout.templateId,
-        canvasData: canvasData || undefined,
+        canvasData: normalizedCanvasData,
         status: 'completed' as const,
       };
 
       const newCard = await productCardService.create(cardData, imageFile);
 
-      // Используем toast вместо alert (если есть toast система)
-      // eslint-disable-next-line no-alert
-      alert('Карточка успешно создана из макета! Теперь вы можете продолжить редактирование.');
       // После создания ведём пользователя на страницу "Мои карточки",
       // где новая карточка появится в списке
       setLocation('/dashboard');
     } catch (err) {
       console.error('Error saving card:', err);
-      // eslint-disable-next-line no-alert
-      alert('Ошибка при сохранении карточки');
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center">
-        <p className="text-gray-500 text-lg">Загрузка макета...</p>
-      </div>
-    );
-  }
-
-  if (error || !layout) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 text-lg">{error || 'Макет не найден'}</p>
-          <button
-            onClick={() => window.history.back()}
-            className="mt-4 text-blue-600 hover:text-blue-700"
-          >
-            Вернуться назад
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // Определяем размер canvas на основе выбранного маркетплейса
   const getCanvasSize = (): string => {
@@ -320,7 +305,7 @@ export default function LayoutEditorPage(): React.JSX.Element {
 
   // Парсим canvasData и правильно структурируем для CardEditor
   const getCanvasData = () => {
-    if (!layout.canvasData) return undefined;
+    if (!layout?.canvasData) return undefined;
 
     try {
       let parsedData: Record<string, unknown>;
@@ -349,7 +334,7 @@ export default function LayoutEditorPage(): React.JSX.Element {
             cardSize: getCanvasSize(),
             slideCount: 1,
             source: 'layout',
-            layoutId: layout.id,
+            layoutId: layout?.id,
           },
         };
       }
@@ -365,129 +350,189 @@ export default function LayoutEditorPage(): React.JSX.Element {
       ? MARKETPLACE_RULES[currentMarketplace.slug]
       : null;
 
+  // Подготовим данные один раз, чтобы не парсить при каждом рендере
+  const canvasData = useMemo(() => getCanvasData(), [layout, cardSize]);
+  const textWarnings = useMemo(
+    () => collectTextWarnings(canvasData, selectedMarketplaceSlug),
+    [canvasData, selectedMarketplaceSlug],
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center">
+        <p className="text-gray-500 text-lg">Загрузка макета...</p>
+      </div>
+    );
+  }
+
+  if (error || !layout) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 text-lg">{error || 'Макет не найден'}</p>
+          <button
+            onClick={() => window.history.back()}
+            className="mt-4 text-blue-600 hover:text-blue-700"
+          >
+            Вернуться назад
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-[100dvh] flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => window.history.back()}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 break-words">{layout.name}</h1>
-                <p className="text-sm text-gray-600">
-                  Редактор макета •{' '}
-                  {currentMarketplace?.name || layout.template?.marketplace?.name || 'Маркетплейс не выбран'}
-                </p>
-              </div>
-            </div>
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Заголовок */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4 mb-3">
+          <button
+            onClick={() => window.history.back()}
+            className="text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{layout.name}</h1>
+            <p className="text-gray-600 mt-1">
+              {layout.description || 'Редактор макета'} •{' '}
+              {currentMarketplace?.name ||
+                layout.template?.marketplace?.name ||
+                'Маркетплейс не выбран'}
+            </p>
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Редактор */}
+        <div className="lg:col-span-3">
+          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+            <CardEditor
+              onSave={handleSave}
+              cardSize={getCanvasSize()}
+              slideCount={1}
+              card={{
+                canvasData,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Боковая панель */}
+        <div className="space-y-4">
+          {/* Предупреждения */}
+          {textWarnings.length > 0 && (
+            <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 shadow-md">
+              <p className="font-semibold text-orange-800 mb-2 text-sm">⚠️ Предупреждения:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs text-orange-700">
+                {textWarnings.map((warning, idx) => (
+                  <li key={idx}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Настройки маркетплейса */}
-          <div className="flex flex-col md:flex-row md:items-end gap-4">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-700">Маркетплейс</label>
-              <select
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[220px]"
-                value={selectedMarketplaceId ?? ''}
-                onChange={(e) => {
-                  const id = e.target.value ? Number(e.target.value) : null;
-                  setSelectedMarketplaceId(id);
-                  const mp = marketplaces?.find((m) => m.id === id) || null;
-                  const slug = mp?.slug ?? null;
-                  setSelectedMarketplaceSlug(slug);
-                  const sizes = getAvailableSizes(slug);
-                  setCardSize(sizes[0] || '900x1200');
-                }}
-              >
-                <option value="">Не выбран</option>
-                {marketplaces?.map((mp) => (
-                  <option key={mp.id} value={mp.id}>
-                    {mp.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="bg-white rounded-lg shadow-lg p-5 border border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-4">Настройки</h3>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-gray-700">Размер макета</label>
-              <div className="flex flex-wrap gap-2">
-                {getAvailableSizes(selectedMarketplaceSlug).map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => setCardSize(size)}
-                    className={`px-3 py-1.5 rounded-md text-xs border ${
-                      cardSize === size
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                    }`}
-                  >
-                    {size.replace('x', ' × ')} px
-                  </button>
-                ))}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Маркетплейс</label>
+                <select
+                  className="w-full border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedMarketplaceId ?? ''}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    setSelectedMarketplaceId(id);
+                    const mp = marketplaces?.find((m) => m.id === id) || null;
+                    const slug = mp?.slug ?? null;
+                    setSelectedMarketplaceSlug(slug);
+                    const sizes = getAvailableSizes(slug);
+                    setCardSize(sizes[0] || '900x1200');
+                  }}
+                >
+                  <option value="">Не выбран</option>
+                  {marketplaces?.map((mp) => (
+                    <option key={mp.id} value={mp.id}>
+                      {mp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Размер макета
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {getAvailableSizes(selectedMarketplaceSlug).map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setCardSize(size)}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium border-2 transition-all ${
+                        cardSize === size
+                          ? 'border-blue-600 bg-blue-50 text-blue-700'
+                          : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                      }`}
+                    >
+                      {size.replace('x', ' × ')}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Требования маркетплейса */}
           {currentRules && (
-            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-700">
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-                <h2 className="font-semibold mb-2">Основные требования: {currentRules.title}</h2>
-                <ul className="list-disc list-inside space-y-1">
-                  {currentRules.general.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+            <div className="bg-white rounded-lg shadow-lg p-5 border border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-3">Требования {currentRules.title}</h3>
+
+              <div className="space-y-4 text-xs">
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-2">Основные требования:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-gray-600">
+                    {currentRules.general.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
                 {currentRules.infographicAllowed && currentRules.infographicAllowed.length > 0 && (
-                  <>
-                    <h3 className="font-semibold mb-1">Инфографика — что можно:</h3>
-                    <ul className="list-disc list-inside space-y-1 mb-2">
+                  <div>
+                    <h4 className="font-semibold text-green-700 mb-2">Инфографика — что можно:</h4>
+                    <ul className="list-disc list-inside space-y-1 text-green-600">
                       {currentRules.infographicAllowed.map((item) => (
                         <li key={item}>{item}</li>
                       ))}
                     </ul>
-                  </>
+                  </div>
                 )}
-                <h3 className="font-semibold mb-1 text-red-700">Инфографика — что нельзя:</h3>
-                <ul className="list-disc list-inside space-y-1 text-red-700">
-                  {currentRules.infographicForbidden.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
+
+                <div>
+                  <h4 className="font-semibold text-red-700 mb-2">Инфографика — что нельзя:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-red-600">
+                    {currentRules.infographicForbidden.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Editor */}
-      <div className="flex-1 overflow-hidden">
-        <CardEditor
-          onSave={handleSave}
-          cardSize={getCanvasSize()}
-          slideCount={1}
-          card={{
-            canvasData: getCanvasData(),
-          }}
-        />
       </div>
     </div>
   );

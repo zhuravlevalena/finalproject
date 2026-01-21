@@ -110,7 +110,7 @@ export default function TemplatesPage(): React.JSX.Element {
           });
 
           // Проверяем, что fabricCanvas создан правильно
-          if (!fabricCanvas || !fabricCanvas.lowerCanvasEl) {
+          if (!fabricCanvas?.getElement?.()) {
             console.warn(`Could not create fabric canvas for layout ${layout.id}`);
             continue;
           }
@@ -119,11 +119,11 @@ export default function TemplatesPage(): React.JSX.Element {
           await new Promise<void>((resolve) => {
             fabric.util.enlivenObjects(
               processedCanvasData.objects,
-              async (enlivenedObjects) => {
+              async (enlivenedObjects: fabric.Object[]) => {
                 try {
                   // Очищаем canvas и добавляем загруженные объекты
                   fabricCanvas.clear();
-                  enlivenedObjects.forEach((obj) => {
+                  enlivenedObjects.forEach((obj: fabric.Object) => {
                     // Устанавливаем crossOrigin для изображений
                     if (obj.type === 'image') {
                       const img = obj as fabric.Image;
@@ -150,27 +150,29 @@ export default function TemplatesPage(): React.JSX.Element {
                               if (!element.crossOrigin) {
                                 element.crossOrigin = 'anonymous';
                               }
-                              
-                              if (element.complete && element.naturalWidth > 0) {
+                              const imgEl = element instanceof HTMLImageElement ? element : null;
+                              if (imgEl?.complete && imgEl.naturalWidth > 0) {
                                 imgResolve();
-                              } else {
+                              } else if (imgEl) {
                                 const onLoad = (): void => {
-                                  element.removeEventListener('load', onLoad);
-                                  element.removeEventListener('error', onError);
+                                  imgEl.removeEventListener('load', onLoad);
+                                  imgEl.removeEventListener('error', onError);
                                   imgResolve();
                                 };
                                 const onError = (): void => {
-                                  element.removeEventListener('load', onLoad);
-                                  element.removeEventListener('error', onError);
+                                  imgEl.removeEventListener('load', onLoad);
+                                  imgEl.removeEventListener('error', onError);
                                   imgResolve();
                                 };
-                                element.addEventListener('load', onLoad);
-                                element.addEventListener('error', onError);
+                                imgEl.addEventListener('load', onLoad);
+                                imgEl.addEventListener('error', onError);
                                 setTimeout(() => {
-                                  element.removeEventListener('load', onLoad);
-                                  element.removeEventListener('error', onError);
+                                  imgEl.removeEventListener('load', onLoad);
+                                  imgEl.removeEventListener('error', onError);
                                   imgResolve();
                                 }, 5000);
+                              } else {
+                                imgResolve();
                               }
                             } else {
                               imgResolve();
@@ -181,7 +183,7 @@ export default function TemplatesPage(): React.JSX.Element {
                   }
 
                   // Проверяем, что canvas все еще валиден перед рендерингом
-                  if (fabricCanvas.lowerCanvasEl && fabricCanvas.getContext()) {
+                  if (fabricCanvas.getElement?.() && fabricCanvas.getContext()) {
                     fabricCanvas.renderAll();
                     
                     // Конвертируем в data URL

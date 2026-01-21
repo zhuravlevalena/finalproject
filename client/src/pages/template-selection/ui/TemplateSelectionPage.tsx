@@ -12,7 +12,6 @@ export default function TemplateSelectionPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'universal' | 'categories'>('universal');
   const [layoutPreviews, setLayoutPreviews] = useState<Map<number, string>>(new Map());
-  const [previewsRendered, setPreviewsRendered] = useState(false);
 
   useEffect(() => {
     // Загружаем все шаблоны (универсальный набор макетов, без выбора маркетплейса)
@@ -33,7 +32,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
   }, []);
 
   const handleTemplateSelect = (templateId: number): void => {
-    setLocation(`/templates?templateId=${String(templateId)}`);
+    setLocation(`/templates?templateId=${templateId}`);
   };
 
   const handleLayoutSelect = (layoutId: number): void => {
@@ -72,7 +71,6 @@ export default function TemplateSelectionPage(): React.JSX.Element {
   useEffect(() => {
     const renderPreviews = async (): Promise<void> => {
       if (activeTab !== 'universal' || universalLayouts.length === 0) {
-        setPreviewsRendered(true);
         return;
       }
 
@@ -125,16 +123,16 @@ export default function TemplateSelectionPage(): React.JSX.Element {
             backgroundColor: '#ffffff',
           });
 
-          if (!fabricCanvas || !fabricCanvas.lowerCanvasEl) continue;
+          if (!fabricCanvas?.getElement?.()) continue;
 
           // Используем fabric.util.enlivenObjects для правильной загрузки изображений
           await new Promise<void>((resolve) => {
             fabric.util.enlivenObjects(
               processedCanvasData.objects,
-              async (enlivenedObjects) => {
+              async (enlivenedObjects: fabric.Object[]) => {
                 try {
                   fabricCanvas.clear();
-                  enlivenedObjects.forEach((obj) => {
+                  enlivenedObjects.forEach((obj: fabric.Object) => {
                     if (obj.type === 'image') {
                       const img = obj as fabric.Image;
                       const element = img.getElement();
@@ -159,25 +157,25 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                               if (!element.crossOrigin) {
                                 element.crossOrigin = 'anonymous';
                               }
-                              
-                              if (element.complete && element.naturalWidth > 0) {
+                              const imgEl = element instanceof HTMLImageElement ? element : null;
+                              if (imgEl?.complete && imgEl.naturalWidth > 0) {
                                 imgResolve();
-                              } else {
+                              } else if (imgEl) {
                                 const onLoad = (): void => {
-                                  element.removeEventListener('load', onLoad);
-                                  element.removeEventListener('error', onError);
+                                  imgEl.removeEventListener('load', onLoad);
+                                  imgEl.removeEventListener('error', onError);
                                   imgResolve();
                                 };
                                 const onError = (): void => {
-                                  element.removeEventListener('load', onLoad);
-                                  element.removeEventListener('error', onError);
+                                  imgEl.removeEventListener('load', onLoad);
+                                  imgEl.removeEventListener('error', onError);
                                   imgResolve();
                                 };
-                                element.addEventListener('load', onLoad);
-                                element.addEventListener('error', onError);
+                                imgEl.addEventListener('load', onLoad);
+                                imgEl.addEventListener('error', onError);
                                 setTimeout(() => {
-                                  element.removeEventListener('load', onLoad);
-                                  element.removeEventListener('error', onError);
+                                  imgEl.removeEventListener('load', onLoad);
+                                  imgEl.removeEventListener('error', onError);
                                   imgResolve();
                                 }, 5000);
                               }
@@ -189,7 +187,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                     );
                   }
 
-                  if (fabricCanvas.lowerCanvasEl && fabricCanvas.getContext()) {
+                  if (fabricCanvas.getElement?.() && fabricCanvas.getContext()) {
                     fabricCanvas.renderAll();
                     
                     const dataURL = fabricCanvas.toDataURL({
@@ -220,13 +218,10 @@ export default function TemplateSelectionPage(): React.JSX.Element {
       }
 
       setLayoutPreviews(previews);
-      setPreviewsRendered(true);
     };
 
     if (universalLayouts.length > 0 && activeTab === 'universal') {
       void renderPreviews();
-    } else {
-      setPreviewsRendered(true);
     }
   }, [universalLayouts, activeTab]);
 
