@@ -217,8 +217,8 @@ class EmailService {
       console.log('Password reset email sent:', info.messageId);
       return info;
     } catch (error) {
-      console.error('Error sending password reset email:', error);
-      throw new Error('Failed to send password reset email');
+      console.error('Main error:', error.message);
+      console.error('Original cause:', error.cause); 
     }
   }
 }

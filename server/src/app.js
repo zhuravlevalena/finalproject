@@ -38,7 +38,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-// Папка с картинками для AI находится в server/src/img
+
 app.use('/img', express.static(path.join(__dirname, './img')));
 
 app.use('/api/auth', authRouter);

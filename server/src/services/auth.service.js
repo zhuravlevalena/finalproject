@@ -1,5 +1,6 @@
 const { User } = require('../../db/models');
 const bcrypt = require('bcrypt');
+const { Op } = require('sequelize');
 const EmailService = require('./email.service');
 
 class AuthService {
@@ -22,7 +23,7 @@ class AuthService {
     
     console.log('Generating verification code...');
     const verificationCode = EmailService.generateVerificationCode();
-    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 минут
+    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000); 
     console.log('Verification code generated:', verificationCode);
 
     console.log('Creating user in database...');
@@ -32,7 +33,7 @@ class AuthService {
         name: name.trim(), 
         hashpass, 
         emailVerified: false,
-        verificationToken: verificationCode, // Сохраняем код в verificationToken
+        verificationToken: verificationCode, 
         verificationTokenExpires,
       },
     });
@@ -44,7 +45,7 @@ class AuthService {
 
     console.log('User created successfully:', { id: user.id, email: user.email });
 
-    // Отправляем письмо с кодом подтверждения
+    
     console.log('=== EMAIL SENDING START ===');
     try {
       console.log('Sending verification email to:', user.email);
@@ -61,26 +62,24 @@ class AuthService {
         response: error.response,
         stack: error.stack,
       });
-      // Не прерываем регистрацию, если не удалось отправить email
-      // Но логируем ошибку для диагностики
+      
     }
 
     const plainUser = user.get();
     delete plainUser.hashpass;
-    delete plainUser.verificationToken; // Не возвращаем токен
+    delete plainUser.verificationToken; 
     return plainUser;
   }
 
-  /**
-   * Подтверждает email по коду
-   */
+  
   static async verifyEmailCode(email, code) {
     const user = await User.findOne({
+      
       where: {
         email,
         verificationToken: code,
         verificationTokenExpires: {
-          [require('sequelize').Op.gt]: new Date(), // Код не истек
+          [Op.gt]: new Date(), 
         },
       },
     });
@@ -111,15 +110,13 @@ class AuthService {
     return plainUser;
   }
 
-  /**
-   * Подтверждает email по токену (для обратной совместимости)
-   */
+ 
   static async verifyEmail(token) {
     const user = await User.findOne({
       where: {
         verificationToken: token,
         verificationTokenExpires: {
-          [require('sequelize').Op.gt]: new Date(), // Токен не истек
+          [Op.gt]: new Date() 
         },
       },
     });
@@ -138,9 +135,6 @@ class AuthService {
     return plainUser;
   }
 
-  /**
-   * Повторно отправляет письмо с кодом подтверждения
-   */
   static async resendVerificationEmail(userId) {
     const user = await User.findByPk(userId);
     if (!user) {
@@ -152,7 +146,7 @@ class AuthService {
     }
 
     const verificationCode = EmailService.generateVerificationCode();
-    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 минут
+    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000); 
 
     user.verificationToken = verificationCode;
     user.verificationTokenExpires = verificationTokenExpires;
@@ -163,9 +157,7 @@ class AuthService {
     return { message: 'Verification email sent' };
   }
 
-  /**
-   * Повторно отправляет код подтверждения по email (для формы регистрации)
-   */
+  
   static async resendVerificationCodeByEmail(email) {
     const user = await User.findOne({ where: { email } });
     if (!user) {
@@ -177,7 +169,7 @@ class AuthService {
     }
 
     const verificationCode = EmailService.generateVerificationCode();
-    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 минут
+    const verificationTokenExpires = new Date(Date.now() + 10 * 60 * 1000); 
 
     user.verificationToken = verificationCode;
     user.verificationTokenExpires = verificationTokenExpires;
@@ -194,7 +186,7 @@ class AuthService {
       throw new Error('Invalid email or password');
     }
     
-    // Проверяем, что у пользователя есть пароль (не зарегистрирован через Google)
+   
     if (!user.hashpass) {
       throw new Error('This account is registered with Google. Please use Google sign-in.');
     }

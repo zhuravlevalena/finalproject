@@ -23,15 +23,25 @@ class AiController{
             }
             
             // Обработка других ошибок API
-            if (error.status || error.code) {
-                return res.status(error.status || error.code || 500).json({ 
-                    error: error.message || 'Ошибка при генерации изображения' 
-                });
+            // TLS/сертификаты
+if (error?.code === 'SELF_SIGNED_CERT_IN_CHAIN') {
+  return res.status(502).json({
+    error: 'TLS ошибка при запросе к AI (SELF_SIGNED_CERT_IN_CHAIN). Проверь сертификаты/прокси/корпоративный MITM.',
+  });
+}
+
+// Остальные ошибки: статус только числовой
+const maybeStatus = error?.status ?? error?.response?.status;
+const status = typeof maybeStatus === 'number' ? maybeStatus : 500;
+
+return res.status(status).json({
+  error: error?.message || 'Ошибка при генерации изображения',
+});
             }
             
             res.status(500).json({ error: error.message || 'Failed to generate content' });
         }
     }
-}
+
 
 module.exports = AiController
