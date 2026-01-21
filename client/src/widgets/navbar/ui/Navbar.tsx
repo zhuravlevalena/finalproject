@@ -149,8 +149,9 @@ export function Navbar(): React.JSX.Element {
   };
 
   return (
-    <nav className="relative z-50 border-b border-white/10 bg-card/70 backdrop-blur-xl">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center gap-3">
+    <>
+      <nav className="relative z-50 border-b border-white/10 bg-card/70 backdrop-blur-xl">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center gap-3">
         <div className="flex items-center gap-4">
           <button
             onClick={() => {
@@ -266,8 +267,8 @@ export function Navbar(): React.JSX.Element {
       </div>
 
       {/* Mobile menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-white/10 bg-card/90 backdrop-blur-2xl nav-slide-in">
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-white/10 bg-card/90 backdrop-blur-2xl nav-slide-in">
           <div className="container mx-auto px-4 py-3 flex flex-col gap-2">
             {user ? (
               <>
@@ -333,8 +334,11 @@ export function Navbar(): React.JSX.Element {
               </>
             )}
           </div>
-        </div>
-      )}
-    </nav>
+          </div>
+        )}
+      </nav>
+      {/* Модалка выбора шаблонов */}
+      <TemplateSelectorModal isOpen={isModalOpen} onClose={() => dispatch(setModalOpen(false))} />
+    </>
   );
 }

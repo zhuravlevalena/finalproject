@@ -183,20 +183,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       };
     }, []);
 
-    const getCanvasData = useCallback((): { fabric?: Record<string, unknown>; meta?: Record<string, unknown> } | null => {
-      if (!fabricCanvasRef.current) return null;
-      const fabricJson = fabricCanvasRef.current.toJSON();
-      const meta = {
-        width: fabricCanvasRef.current.getWidth(),
-        height: fabricCanvasRef.current.getHeight(),
-        objectsCount: fabricCanvasRef.current.getObjects().length,
-      };
-      return {
-        fabric: fabricJson,
-        meta,
-      };
-    }, []);
-
     // Экспортируем методы через ref
     useImperativeHandle(
       ref,
