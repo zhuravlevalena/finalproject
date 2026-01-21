@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
 import { useAppDispatch } from '@/shared/lib/hooks';
 import { productCardService } from '@/entities/productcard/api/productcard.service';
 import { deleteProductCardThunk } from '@/entities/productcard/model/productcard.thunk';
+import type { CardEditorRef } from '@/widgets/card-editor/ui/CardEditor';
 import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 import { Card } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
-import { Loader2, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Loader2, Trash2, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { imageService } from '@/entities/image/api/image.service';
+
+type SlideData = {
+  canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> };
+  uploadedImage?: { id: number; url: string } | null;
+  backgroundImage?: { id: number; url: string } | null;
+};
 
 export default function EditCard(): React.JSX.Element {
   const [, params] = useRoute('/edit-card/:id');
@@ -17,12 +25,117 @@ export default function EditCard(): React.JSX.Element {
   const cardId = params?.id ? Number(params.id) : null;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const cardEditorRef = useRef<CardEditorRef | null>(null);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [slides, setSlides] = useState<SlideData[]>([
+    {
+      canvasData: undefined,
+      uploadedImage: null,
+      backgroundImage: null,
+    },
+  ]);
 
   const { data: card, isLoading } = useQuery({
     queryKey: ['productCard', cardId],
     queryFn: () => productCardService.getById(cardId!),
     enabled: !!cardId,
   });
+
+  // Загружаем данные слайдов из карточки
+  useEffect(() => {
+    if (!card) return;
+
+    const canvasData = card.canvasData as
+      | {
+          meta?: {
+            slides?: {
+              canvasData?: {
+                fabric?: Record<string, unknown>;
+                meta?: Record<string, unknown>;
+              };
+              imageId?: number;
+              backgroundImageId?: number;
+            }[];
+            slideCount?: number;
+            cardSize?: string;
+          };
+        }
+      | null
+      | undefined;
+
+    const meta = canvasData?.meta;
+    const slidesData = meta?.slides ?? [];
+    const slideCount = meta?.slideCount ?? 1;
+
+    // Инициализируем массив слайдов
+    const loadedSlides: SlideData[] = [];
+
+    const loadSlideData = async () => {
+      for (let i = 0; i < slideCount; i++) {
+        const slideData = slidesData[i];
+        const slide: SlideData = {
+          canvasData: slideData?.canvasData,
+          uploadedImage: null,
+          backgroundImage: null,
+        };
+
+        // Загружаем изображение слайда, если есть imageId
+        if (slideData?.imageId) {
+          try {
+            const image = await imageService.getById(slideData.imageId);
+            if (image) {
+              slide.uploadedImage = {
+                id: image.id,
+                url: image.url.startsWith('http')
+                  ? image.url
+                  : `${window.location.origin}${image.url}`,
+              };
+            }
+          } catch (error) {
+            console.error(`Error loading image for slide ${i}:`, error);
+          }
+        } else if (i === 0 && card.imageId) {
+          // Для первого слайда используем основное изображение карточки
+          try {
+            const image = await imageService.getById(card.imageId);
+            if (image) {
+              slide.uploadedImage = {
+                id: image.id,
+                url: image.url.startsWith('http')
+                  ? image.url
+                  : `${window.location.origin}${image.url}`,
+              };
+            }
+          } catch (error) {
+            console.error('Error loading main image:', error);
+          }
+        }
+
+        // Загружаем фоновое изображение, если есть backgroundImageId
+        if (slideData?.backgroundImageId) {
+          try {
+            const bgImage = await imageService.getById(slideData.backgroundImageId);
+            if (bgImage) {
+              slide.backgroundImage = {
+                id: bgImage.id,
+                url: bgImage.url.startsWith('http')
+                  ? bgImage.url
+                  : `${window.location.origin}${bgImage.url}`,
+              };
+            }
+          } catch (error) {
+            console.error(`Error loading background image for slide ${i}:`, error);
+          }
+        }
+
+        loadedSlides.push(slide);
+      }
+
+      setSlides(loadedSlides);
+    };
+
+    void loadSlideData();
+  }, [card]);
 
   const updateCardMutation = useMutation({
     mutationFn: ({
@@ -39,22 +152,82 @@ export default function EditCard(): React.JSX.Element {
     },
   });
 
+  // Сохранение текущего слайда перед переключением
+  const saveCurrentSlideCanvas = (): void => {
+    if (!cardEditorRef.current?.getCanvasData) return;
+    const canvasData = cardEditorRef.current.getCanvasData();
+    if (canvasData) {
+      setSlides((prev) => {
+        const newSlides = [...prev];
+        newSlides[currentSlideIndex] = {
+          ...newSlides[currentSlideIndex],
+          canvasData: {
+            fabric: canvasData.fabric ?? null,
+            meta: canvasData.meta ?? {},
+          },
+        };
+        return newSlides;
+      });
+    }
+  };
+
+  // Обработчик переключения слайда
+  const handleSlideChange = (newIndex: number): void => {
+    if (newIndex === currentSlideIndex) return;
+    saveCurrentSlideCanvas();
+    setCurrentSlideIndex(newIndex);
+  };
+
   const handleSave = async (
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
-  ) => {
+  ): Promise<void> => {
     if (!cardId) return;
+
+    // Сохраняем данные текущего слайда
+    const updatedSlides = [...slides];
+    updatedSlides[currentSlideIndex] = {
+      ...updatedSlides[currentSlideIndex],
+      canvasData: canvasData || updatedSlides[currentSlideIndex].canvasData,
+    };
+    setSlides(updatedSlides);
+
+    // Извлекаем параметры из существующей карточки
+    const existingCanvasData = card.canvasData as
+      | {
+          meta?: {
+            slideCount?: number;
+            cardSize?: string;
+          };
+        }
+      | null
+      | undefined;
+    const meta = existingCanvasData?.meta;
+    const slideCount = meta?.slideCount ?? slides.length;
+    const cardSize = meta?.cardSize ?? '1024x768';
+
+    // Создаем массив всех слайдов с их данными
+    const slidesData = updatedSlides.map((slide, index) => ({
+      canvasData: slide.canvasData ?? { fabric: undefined, meta: {} },
+      imageId: slide.uploadedImage?.id,
+      backgroundImageId: slide.backgroundImage?.id,
+      slideIndex: index,
+    }));
 
     updateCardMutation.mutate({
       canvasData: {
-        fabric: canvasData?.fabric || null,
-        meta: canvasData?.meta || {},
+        fabric: undefined,
+        meta: {
+          slideCount,
+          cardSize,
+          slides: slidesData,
+        },
       },
       imageFile,
     });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     if (!cardId) return;
 
     setIsDeleting(true);
@@ -101,12 +274,16 @@ export default function EditCard(): React.JSX.Element {
     );
   }
 
-  // Извлекаем параметры из canvasData.meta с проверками безопасности
-  const canvasData =
-    (card.canvasData as
-      | { meta?: Record<string, unknown>; fabric?: Record<string, unknown> }
-      | null
-      | undefined) || undefined;
+  // Извлекаем параметры из canvasData.meta
+  const canvasData = card.canvasData as
+    | {
+        meta?: {
+          slideCount?: number;
+          cardSize?: string;
+        };
+      }
+    | null
+    | undefined;
   const meta = canvasData?.meta;
 
   // Безопасное извлечение cardSize
@@ -126,47 +303,8 @@ export default function EditCard(): React.JSX.Element {
     slideCount = meta.slideCount;
   }
 
-  // Преобразуем image в нужный формат с проверками
-  let initialImage: { id: number; url: string } | undefined;
-  if (card.image) {
-    const imageData = card.image as unknown as { id?: number; url?: string };
-    if (imageData?.id && imageData?.url) {
-      initialImage = { id: imageData.id, url: imageData.url };
-    } else if (card.imageId) {
-      initialImage = { id: card.imageId, url: '' };
-    }
-  } else if (card.imageId) {
-    initialImage = { id: card.imageId, url: '' };
-  }
-
-  // Получаем backgroundImage из meta, если есть ID
-  let backgroundImage: { id: number; url: string } | undefined;
-  if (
-    meta &&
-    typeof meta === 'object' &&
-    'backgroundImageId' in meta &&
-    typeof meta.backgroundImageId === 'number'
-  ) {
-    const { backgroundImageId } = meta;
-    if (card.image) {
-      const imageData = card.image as unknown as { url?: string };
-      if (imageData?.url) {
-        backgroundImage = { id: backgroundImageId, url: imageData.url };
-      }
-    }
-  }
-
-  // Преобразуем card в нужный формат для CardEditor
-  let generatedImageUrl: string | undefined;
-  if (card.generatedImage) {
-    const generatedImageData = card.generatedImage as unknown as { url?: string };
-    generatedImageUrl = generatedImageData?.url;
-  }
-
-  const cardForEditor = {
-    canvasData,
-    generatedImage: generatedImageUrl ? { url: generatedImageUrl } : undefined,
-  };
+  const currentSlide = slides[currentSlideIndex] ?? slides[0];
+  const hasMultipleSlides = slideCount > 1;
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
@@ -177,11 +315,61 @@ export default function EditCard(): React.JSX.Element {
           <div className="lg:col-span-2">
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Редактор карточки</h2>
+
+              {/* Навигация по слайдам */}
+              {hasMultipleSlides && (
+                <div className="mb-4 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSlideChange(Math.max(0, currentSlideIndex - 1))}
+                    disabled={currentSlideIndex === 0}
+                    className="flex items-center gap-2"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Предыдущий
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      Слайд {currentSlideIndex + 1} из {slideCount}
+                    </span>
+                    <div className="flex gap-1">
+                      {Array.from({ length: slideCount }).map((_, index) => (
+                        <div
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            index === currentSlideIndex ? 'bg-blue-500' : 'bg-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      handleSlideChange(Math.min(slideCount - 1, currentSlideIndex + 1))
+                    }
+                    disabled={currentSlideIndex === slideCount - 1}
+                    className="flex items-center gap-2"
+                  >
+                    Следующий
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
               <CardEditor
-                card={cardForEditor}
+                key={`slide-${String(currentSlideIndex)}-${cardSize}`}
+                ref={cardEditorRef}
+                card={
+                  currentSlide.canvasData
+                    ? {
+                        canvasData: currentSlide.canvasData,
+                      }
+                    : undefined
+                }
                 onSave={handleSave}
-                initialImage={initialImage}
-                backgroundImage={backgroundImage}
+                initialImage={currentSlide.uploadedImage ?? undefined}
+                backgroundImage={currentSlide.backgroundImage ?? undefined}
                 cardSize={cardSize}
                 slideCount={slideCount}
               />
@@ -195,13 +383,13 @@ export default function EditCard(): React.JSX.Element {
                 <div>
                   <p className="text-sm font-medium">Маркетплейс</p>
                   <p className="text-sm text-muted-foreground">
-                    {card.marketplace?.name || 'Не указан'}
+                    {card.marketplace?.name ?? 'Не указан'}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium">Шаблон</p>
                   <p className="text-sm text-muted-foreground">
-                    {card.template?.name || 'Не указан'}
+                    {card.template?.name ?? 'Не указан'}
                   </p>
                 </div>
                 <div>
@@ -216,6 +404,12 @@ export default function EditCard(): React.JSX.Element {
                     {card.status === 'completed' ? 'Завершена' : 'Черновик'}
                   </span>
                 </div>
+                {hasMultipleSlides && (
+                  <div>
+                    <p className="text-sm font-medium">Количество слайдов</p>
+                    <p className="text-sm text-muted-foreground">{slideCount}</p>
+                  </div>
+                )}
               </div>
             </Card>
           </div>

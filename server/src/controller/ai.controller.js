@@ -4,13 +4,14 @@ class AiController{
     static async ask(req,res){
         try {
             const { query } = req.body;
+            const userId = req.user.id;
             
             if (!query || typeof query !== 'string') {
                 return res.status(400).json({ error: 'Query is required' });
             }
             
-            const response = await aiService.createImg(query);
-            res.status(200).json({ response });
+            const image = await aiService.createImg(query, userId);
+            res.status(200).json({ response: image.url, image });
         } catch (error) {
             console.error('Error in AI controller:', error);
             

@@ -2,6 +2,7 @@ require('dotenv').config();
 const { GigaChat, detectImage } = require('gigachat');
 const fs = require('fs').promises;
 const path = require('path');
+const ImageService = require('./image.service');
 
 class AiService {
   constructor() {
@@ -35,11 +36,12 @@ class AiService {
   }
 
   /**
-   * Генерирует изображение и сохраняет его в папку img
+   * Генерирует изображение и сохраняет его в папку img и в БД
    * @param {string} prompt - Описание для генерации изображения
-   * @returns {Promise<string>} - Путь к сохраненному изображению (например, /img/ai-1234567890-uuid-1.png)
+   * @param {number} userId - ID пользователя
+   * @returns {Promise<Object>} - Объект изображения из БД с полями id, url, userId и т.д.
    */
-  async createImg(prompt) {
+  async createImg(prompt, userId) {
     try {
       // Генерируем изображение через ask()
       const result = await this.ask(prompt);
@@ -118,7 +120,22 @@ class AiService {
       const imageUrl = `/img/${filename}`;
       console.log('Изображение сохранено:', imageUrl, 'Размер:', imageBuffer.length, 'байт');
       
-      return imageUrl;
+      // Сохраняем в БД
+      const image = await ImageService.createImage({
+        userId,
+        url: imageUrl,
+        type: 'generated',
+        prompt: prompt,
+        originalName: filename,
+        metadata: {
+          uuid: imageData.uuid || uuid,
+          timestamp: timestamp,
+        }
+      });
+
+      console.log('Изображение сохранено в БД с ID:', image.id);
+      
+      return image;
     } catch (error) {
       console.error('Ошибка при создании изображения:', error);
       throw error;
