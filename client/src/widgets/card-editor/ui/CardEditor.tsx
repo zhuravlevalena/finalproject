@@ -58,6 +58,7 @@ export type CardEditorRef = {
   addTextElements?: (
     texts: { text: string; fontSize?: number; top?: number; left?: number }[],
   ) => void;
+  getCanvasData?: () => { fabric?: Record<string, unknown>; meta?: Record<string, unknown> } | null;
 };
 
 export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
@@ -168,13 +169,42 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       [textProps.fontFamily, textProps.fill, saveHistory],
     );
 
+    const getCanvasData = useCallback((): { fabric?: Record<string, unknown>; meta?: Record<string, unknown> } | null => {
+      if (!fabricCanvasRef.current) return null;
+      const fabricJson = fabricCanvasRef.current.toJSON();
+      const meta = {
+        width: fabricCanvasRef.current.getWidth(),
+        height: fabricCanvasRef.current.getHeight(),
+        objectsCount: fabricCanvasRef.current.getObjects().length,
+      };
+      return {
+        fabric: fabricJson,
+        meta,
+      };
+    }, []);
+
+    const getCanvasData = useCallback((): { fabric?: Record<string, unknown>; meta?: Record<string, unknown> } | null => {
+      if (!fabricCanvasRef.current) return null;
+      const fabricJson = fabricCanvasRef.current.toJSON();
+      const meta = {
+        width: fabricCanvasRef.current.getWidth(),
+        height: fabricCanvasRef.current.getHeight(),
+        objectsCount: fabricCanvasRef.current.getObjects().length,
+      };
+      return {
+        fabric: fabricJson,
+        meta,
+      };
+    }, []);
+
     // Экспортируем методы через ref
     useImperativeHandle(
       ref,
       () => ({
         addTextElements,
+        getCanvasData,
       }),
-      [addTextElements],
+      [addTextElements, getCanvasData],
     );
 
     // Инициализация canvas

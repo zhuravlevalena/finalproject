@@ -75,16 +75,49 @@ export default function RegisterForm(): React.JSX.Element {
       const serverError = error as {
         message?: string;
         error?: string;
-        response?: { data?: { message?: string; error?: string } };
+        response?: { status?: number; data?: { message?: string; error?: string } };
       };
 
-      const errorMessage =
-        serverError.message ??
-        serverError.error ??
+      const backendMessage =
         serverError.response?.data?.message ??
         serverError.response?.data?.error ??
+        serverError.error;
+
+      const errorMessageLower = backendMessage?.toLowerCase() ?? '';
+
+      const isDuplicateEmail =
+        serverError.response?.status === 409 ||
+        serverError.response?.status === 400 ||
+        errorMessageLower.includes('taken') ||
+        errorMessageLower.includes('already') ||
+        errorMessageLower.includes('exist') ||
+        errorMessageLower.includes('уже зарегистрирован') ||
+        errorMessageLower.includes('уже существует');
+
+      if (isDuplicateEmail) {
+        setErrors({
+          email: 'Пользователь с таким email уже зарегистрирован',
+          submit:
+            'Пользователь с таким email уже зарегистрирован. Используйте вход или восстановление пароля.',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (serverError.response?.status === 400) {
+        const filteredMessage =
+          backendMessage && !errorMessageLower.includes('request failed')
+            ? backendMessage
+            : 'Некорректные данные для регистрации. Проверьте email и пароль.';
+        setErrors({ submit: filteredMessage });
+        setIsLoading(false);
+        return;
+      }
+
+      const errorMessage =
+        backendMessage ??
         (step === 'register'
-          ? 'Произошла ошибка при регистрации. Попробуйте еще раз.'
+          ? 'Пользователь с таким email уже зарегистрирован. Используйте вход или восстановление пароля.'
           : 'Неверный код подтверждения. Попробуйте еще раз.');
 
       setErrors({ submit: errorMessage });
@@ -116,13 +149,30 @@ export default function RegisterForm(): React.JSX.Element {
     }
   };
 
+  const renderSubmitLabel = (): React.ReactNode => {
+    if (isLoading) {
+      return (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          {step === 'register' ? 'Создание аккаунта...' : 'Подтверждение...'}
+        </>
+      );
+    }
+
+    if (step === 'register') {
+      return 'Создать аккаунт';
+    }
+
+    return 'Подтвердить email';
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto shadow-xl">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">
+        <CardTitle className="text-2xl font-bold text-center dark:text-white">
           {step === 'register' ? 'Создать аккаунт' : 'Подтверждение email'}
         </CardTitle>
-        <p className="text-center text-sm text-gray-600">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-300">
           {step === 'register'
             ? 'Заполните форму, чтобы войти в личный кабинет'
             : `На ваш email ${registeredEmail} отправлен код подтверждения. Введите его ниже.`}
@@ -130,12 +180,21 @@ export default function RegisterForm(): React.JSX.Element {
       </CardHeader>
       <CardContent>
         <form ref={formRef} onSubmit={submitHandler} className="space-y-4">
+          {errors.submit && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="p-3 text-sm rounded-2xl border bg-red-100 text-red-800 border-red-300 dark:bg-red-900/70 dark:text-red-100 dark:border-red-700"
+            >
+              {errors.submit}
+            </div>
+          )}
           {step === 'register' && (
             <>
               <div className="space-y-2">
                 <label
                   htmlFor="name"
-                  className="text-sm font-medium leading-none text-gray-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="text-sm font-medium leading-none text-gray-700 dark:text-gray-200 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
                   Имя
                 </label>
@@ -164,7 +223,7 @@ export default function RegisterForm(): React.JSX.Element {
                       emailRef.current?.focus();
                     }
                   }}
-                  className="flex h-12 w-full rounded-2xl border border-white/40 organic-input px-4 py-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
+                  className="flex h-12 w-full rounded-2xl border border-white/40 organic-input px-4 py-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 dark:placeholder:text-gray-400 text-gray-800 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
                   placeholder="Введите ваше имя"
                 />
                 {errors.name && <p className="text-sm text-red-300">{errors.name}</p>}
@@ -173,7 +232,7 @@ export default function RegisterForm(): React.JSX.Element {
               <div className="space-y-2">
                 <label
                   htmlFor="email"
-                  className="text-sm font-medium leading-none text-gray-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="text-sm font-medium leading-none text-gray-700 dark:text-gray-200 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
                   Email
                 </label>
@@ -205,7 +264,7 @@ export default function RegisterForm(): React.JSX.Element {
                       nameRef.current?.focus();
                     }
                   }}
-                  className="flex h-12 w-full rounded-2xl border border-white/40 organic-input px-4 py-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
+                  className="flex h-12 w-full rounded-2xl border border-white/40 organic-input px-4 py-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 dark:placeholder:text-gray-400 text-gray-800 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
                   placeholder="example@email.com"
                 />
                 {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
@@ -214,7 +273,7 @@ export default function RegisterForm(): React.JSX.Element {
               <div className="space-y-2">
                 <label
                   htmlFor="password"
-                  className="text-sm font-medium leading-none text-gray-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  className="text-sm font-medium leading-none text-gray-700 dark:text-gray-200 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
                   Пароль
                 </label>
@@ -247,7 +306,7 @@ export default function RegisterForm(): React.JSX.Element {
                         emailRef.current?.focus();
                       }
                     }}
-                    className="flex h-12 w-full rounded-2xl border border-border/50 organic-input px-4 py-3 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
+                    className="flex h-12 w-full rounded-2xl border border-border/50 organic-input px-4 py-3 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground dark:placeholder:text-gray-400 text-gray-800 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
                     placeholder="Введите пароль"
                   />
                   <button
@@ -303,7 +362,7 @@ export default function RegisterForm(): React.JSX.Element {
                       formRef.current?.requestSubmit();
                     }
                   }}
-                  className="flex h-16 w-full rounded-3xl border-2 border-purple-300/50 organic-input px-4 py-2 text-center text-3xl font-mono tracking-[0.5em] ring-offset-background text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
+                  className="flex h-16 w-full rounded-3xl border-2 border-purple-300/50 organic-input px-4 py-2 text-center text-3xl font-mono tracking-[0.5em] ring-offset-background text-gray-800 dark:text-white dark:placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
                   placeholder="000000"
                   autoFocus
                 />
@@ -334,12 +393,6 @@ export default function RegisterForm(): React.JSX.Element {
             </div>
           )}
 
-          {errors.submit && (
-            <div className="p-3 text-sm text-red-300 bg-red-500/20 backdrop-blur-sm rounded-2xl border border-red-400/30">
-              {errors.submit}
-            </div>
-          )}
-
           <div className="relative">
             <Button
               type="submit"
@@ -358,16 +411,7 @@ export default function RegisterForm(): React.JSX.Element {
                 }
               }}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {step === 'register' ? 'Создание аккаунта...' : 'Подтверждение...'}
-                </>
-              ) : step === 'register' ? (
-                'Создать аккаунт'
-              ) : (
-                'Подтвердить email'
-              )}
+              {renderSubmitLabel()}
             </Button>
             <button
               ref={submitButtonRef}

@@ -41,7 +41,12 @@ class AuthController {
         stack: error.stack,
         name: error.name,
       });
-      return res.status(400).json({ error: error.message || 'Registration failed' });
+      if (error.message === 'this email is taken') {
+        return res
+          .status(409)
+          .json({ message: 'Пользователь с таким email уже зарегистрирован' });
+      }
+      return res.status(400).json({ message: error.message || 'Registration failed' });
     }
   }
 

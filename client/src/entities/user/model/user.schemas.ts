@@ -5,12 +5,29 @@ export const userSchema = z.object({
   name: z.string(),
   email: z.string(),
   emailVerified: z.boolean().optional(),
+  birthDate: z.string().nullable().optional(),
+  gender: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
 });
 
+const passwordRegex =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+const forbiddenSequences = ['123456', 'qwerty', 'password', '111111', '123123'];
+
 export const registerFormSchema = z.object({
-    name: z.string().min(1, 'Имя обязательно для заполнения'),
-    email: z.string().email('Некорректный email'),
-    password: z.string().min(6, 'Пароль должен содержать минимум 6 символов')
+  name: z.string().min(1, 'Имя обязательно для заполнения'),
+  email: z.string().email('Некорректный email'),
+  password: z
+    .string()
+    .min(8, 'Пароль должен содержать минимум 8 символов')
+    .regex(
+      passwordRegex,
+      'Пароль должен содержать хотя бы 1 заглавную, 1 строчную, 1 цифру и 1 спецсимвол (!@#$%^&*)',
+    )
+    .refine(
+      (val) => !forbiddenSequences.some((seq) => val.toLowerCase().includes(seq)),
+      'Пароль не должен содержать распространённые последовательности (например, 123456, qwerty)',
+    ),
 });
 
 export const verifyCodeSchema = z.object({

@@ -1,5 +1,7 @@
+import type { AIResponse } from '../api/ai.service';
+
 export type AIState = {
-  response: string | null;
+  response: AIResponse | null;
   loading: boolean;
   error: string | null;
 };

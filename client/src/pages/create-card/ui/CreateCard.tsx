@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
 import { fetchMarketplacesThunk } from '@/entities/marketplace/model/marketplace.thunk';
 import { fetchTemplatesThunk } from '@/entities/template/model/template.thunk';
-import { uploadImageThunk } from '@/entities/image/model/image.thunk';
+import { uploadImageThunk, fetchImageByIdThunk } from '@/entities/image/model/image.thunk';
 import { createProductCardThunk } from '@/entities/productcard/model/productcard.thunk';
 import { getOrCreateProductProfileThunk } from '@/entities/productprofile/model/productprofile.thunk';
 
@@ -22,22 +22,25 @@ import {
   Layers,
 } from 'lucide-react';
 import type { CreateProductCardDto } from '@/entities/productcard/model/productcard.types';
-import { CardEditor, type CardEditorRef } from '@/widgets/card-editor/ui/CardEditor';
+import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 
 type CardSize = '800x600' | '1024x768' | '1200x900' | '1920x1080';
 type SlideCount = 1 | 2 | 3 | 4 | 5;
 
+// Маппинг размеров карточек для каждого маркетплейса
 const marketplaceCardSizes: Record<string, CardSize[]> = {
   wildberries: ['800x600', '1024x768', '1200x900'],
   ozon: ['1024x768', '1200x900', '1920x1080'],
   'yandex-market': ['800x600', '1024x768', '1200x900', '1920x1080'],
 };
 
+// Функция для получения доступных размеров по маркетплейсу
 const getAvailableSizes = (marketplaceSlug: string | null): CardSize[] => {
   if (!marketplaceSlug) return [];
   return marketplaceCardSizes[marketplaceSlug] ?? ['1024x768'];
 };
 
+// Тип для данных слайда
 type SlideData = {
   canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> };
   uploadedImage?: { id: number; url: string } | null;
@@ -46,8 +49,14 @@ type SlideData = {
 
 export default function CreateCard(): React.JSX.Element {
   const [, setLocation] = useLocation();
+  const searchParams = new URLSearchParams(window.location.search);
   const dispatch = useAppDispatch();
-  const cardEditorRef = useRef<CardEditorRef | null>(null);
+  const cardEditorRef = useRef<{
+    getCanvasData?: () => {
+      fabric?: Record<string, unknown>;
+      meta?: Record<string, unknown>;
+    } | null;
+  } | null>(null);
 
   const [selectedMarketplace, setSelectedMarketplace] = useState<number | null>(null);
   const [selectedMarketplaceSlug, setSelectedMarketplaceSlug] = useState<string | null>(null);
@@ -57,8 +66,9 @@ export default function CreateCard(): React.JSX.Element {
   const [slideCount, setSlideCount] = useState<SlideCount>(1);
   const [activeTab, setActiveTab] = useState<'settings' | 'images'>('settings');
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [selectedExampleImage, setSelectedExampleImage] = useState<string | null>(null);
 
-
+  // Массив данных для каждого слайда
   const [slides, setSlides] = useState<SlideData[]>([
     {
       canvasData: undefined,
@@ -71,7 +81,7 @@ export default function CreateCard(): React.JSX.Element {
   const { templates, loading: templatesLoading } = useAppSelector((state) => state.template);
   const { uploading: isUploadingImage } = useAppSelector((state) => state.image);
 
-
+  // Обновляем массив слайдов при изменении slideCount
   useEffect(() => {
     setSlides((prev) => {
       const newSlides = [...prev];
@@ -90,7 +100,7 @@ export default function CreateCard(): React.JSX.Element {
     if (currentSlideIndex >= slideCount) {
       setCurrentSlideIndex(Math.max(0, slideCount - 1));
     }
-  }, [slideCount]);
+  }, [slideCount, currentSlideIndex]);
 
   useEffect(() => {
     void dispatch(fetchMarketplacesThunk());
@@ -105,18 +115,47 @@ export default function CreateCard(): React.JSX.Element {
     }
   }, [dispatch, selectedMarketplace]);
 
-  
-  const saveCurrentSlideCanvas = () => {
-    if (!cardEditorRef.current?.getCanvasData) return;
+  // Загружаем изображение из URL параметров если есть
+  useEffect(() => {
+    const imageId = searchParams.get('imageId');
+    const imageUrl = searchParams.get('imageUrl');
+    
+    if (imageId && imageUrl) {
+      // Загружаем полную информацию об изображении
+      dispatch(fetchImageByIdThunk(Number(imageId))).then((result) => {
+        if (fetchImageByIdThunk.fulfilled.match(result)) {
+          const imageData = { id: result.payload.id, url: result.payload.url };
+          setSlides((prev) => {
+            const newSlides = [...prev];
+            newSlides[0] = {
+              ...newSlides[0],
+              uploadedImage: imageData,
+            };
+            return newSlides;
+          });
+          // Переключаемся на вкладку изображений
+          setActiveTab('images');
+          // Очищаем URL параметры
+          window.history.replaceState({}, '', '/create-card');
+        }
+      });
+    }
+  }, [dispatch, searchParams]);
 
-    const canvasData = cardEditorRef.current.getCanvasData();
+  // Функция для сохранения текущего состояния canvas перед переключением слайда
+  const saveCurrentSlideCanvas = (): void => {
+    if (!cardEditorRef.current) return;
+    const { getCanvasData } = cardEditorRef.current;
+    if (!getCanvasData) return;
+
+    const canvasData = getCanvasData();
     if (canvasData) {
       setSlides((prev) => {
         const newSlides = [...prev];
         newSlides[currentSlideIndex] = {
           ...newSlides[currentSlideIndex],
           canvasData: {
-            fabric: canvasData.fabric ?? null,
+            fabric: canvasData.fabric ?? undefined,
             meta: canvasData.meta ?? {},
           },
         };
@@ -125,14 +164,14 @@ export default function CreateCard(): React.JSX.Element {
     }
   };
 
- 
-  const handleSlideChange = (newIndex: number) => {
+  // Обработчик переключения слайда
+  const handleSlideChange = (newIndex: number): void => {
     if (newIndex === currentSlideIndex) return;
     saveCurrentSlideCanvas();
     setCurrentSlideIndex(newIndex);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (file) {
       const result = await dispatch(uploadImageThunk(file));
@@ -150,7 +189,7 @@ export default function CreateCard(): React.JSX.Element {
     }
   };
 
-  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (file) {
       const result = await dispatch(uploadImageThunk(file));
@@ -168,7 +207,7 @@ export default function CreateCard(): React.JSX.Element {
     }
   };
 
-  const handleRemoveImage = () => {
+  const handleRemoveImage = (): void => {
     setSlides((prev) => {
       const newSlides = [...prev];
       newSlides[currentSlideIndex] = {
@@ -179,7 +218,7 @@ export default function CreateCard(): React.JSX.Element {
     });
   };
 
-  const handleRemoveBackground = () => {
+  const handleRemoveBackground = (): void => {
     setSlides((prev) => {
       const newSlides = [...prev];
       newSlides[currentSlideIndex] = {
@@ -193,7 +232,7 @@ export default function CreateCard(): React.JSX.Element {
   const handleSave = async (
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
-  ) => {
+  ): Promise<void> => {
     const updatedSlides = [...slides];
     updatedSlides[currentSlideIndex] = {
       ...updatedSlides[currentSlideIndex],
@@ -209,8 +248,9 @@ export default function CreateCard(): React.JSX.Element {
       }
     }
 
+    // Создаем массив всех слайдов с их данными
     const slidesData = updatedSlides.map((slide, index) => ({
-      canvasData: slide.canvasData ?? { fabric: null, meta: {} },
+      canvasData: slide.canvasData ?? { fabric: undefined, meta: {} },
       imageId: slide.uploadedImage?.id,
       backgroundImageId: slide.backgroundImage?.id,
       slideIndex: index,
@@ -222,7 +262,7 @@ export default function CreateCard(): React.JSX.Element {
       productProfileId: profileId,
       imageId: updatedSlides[0]?.uploadedImage?.id,
       canvasData: {
-        fabric: null,
+        fabric: undefined,
         meta: {
           slideCount,
           cardSize,
@@ -247,7 +287,7 @@ export default function CreateCard(): React.JSX.Element {
     { value: '1920x1080', label: '1920 × 1080', description: 'Full HD' },
   ];
 
-  const currentSlide = slides[currentSlideIndex] || slides[0];
+  const currentSlide = slides[currentSlideIndex] ?? slides[0];
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -310,7 +350,7 @@ export default function CreateCard(): React.JSX.Element {
                   <div className="flex gap-2">
                     {slides.map((_, index) => (
                       <motion.button
-                        key={index}
+                        key={`slide-indicator-${String(index)}`}
                         whileHover={{ scale: 1.2 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => handleSlideChange(index)}
@@ -319,7 +359,7 @@ export default function CreateCard(): React.JSX.Element {
                             ? 'bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg scale-125'
                             : 'bg-gray-300 hover:bg-gray-400'
                         }`}
-                        title={`Слайд ${index + 1}`}
+                        title={`Слайд ${String(index + 1)}`}
                       />
                     ))}
                   </div>
@@ -337,17 +377,76 @@ export default function CreateCard(): React.JSX.Element {
               </motion.div>
             )}
 
-            <CardEditor
-              key={`slide-${currentSlideIndex}-${cardSize}`}
-              ref={cardEditorRef}
-              onSave={handleSave}
-              initialImage={currentSlide.uploadedImage ?? undefined}
-              backgroundImage={currentSlide.backgroundImage ?? undefined}
-              cardSize={cardSize}
-              slideCount={slideCount}
-              card={currentSlide.canvasData ? { canvasData: currentSlide.canvasData } : undefined}
-            />
+            <div className="max-h-[500px] overflow-auto">
+              <CardEditor
+                key={`slide-${String(currentSlideIndex)}-${cardSize}`}
+                ref={cardEditorRef}
+                onSave={handleSave}
+                initialImage={currentSlide.uploadedImage ?? undefined}
+                backgroundImage={currentSlide.backgroundImage ?? undefined}
+                cardSize={cardSize}
+                slideCount={slideCount}
+                card={currentSlide.canvasData ? { canvasData: currentSlide.canvasData } : undefined}
+              />
+            </div>
           </Card>
+
+          {/* Пример карточки */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="mt-6 bg-white/80 backdrop-blur-sm border-2 border-gray-200/50 rounded-xl p-6 shadow-xl"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              <h3 className="text-lg font-semibold text-gray-800">Пример готовой карточки</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Вот пример того, что вы можете создать с помощью нашего редактора
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.5 }}
+                className="overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+                onClick={() => setSelectedExampleImage('/пример1.jpg')}
+              >
+                <img
+                  src="/пример1.jpg"
+                  alt="Пример карточки товара 1"
+                  className="w-full h-auto object-cover hover:scale-105 transition-transform duration-300"
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.6 }}
+                className="overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+                onClick={() => setSelectedExampleImage('/пример2.jpg')}
+              >
+                <img
+                  src="/пример2.jpg"
+                  alt="Пример карточки товара 2"
+                  className="w-full h-auto object-cover hover:scale-105 transition-transform duration-300"
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.7 }}
+                className="overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+                onClick={() => setSelectedExampleImage('/пример3.jpg')}
+              >
+                <img
+                  src="/пример3.jpg"
+                  alt="Пример карточки товара 3"
+                  className="w-full h-auto object-cover hover:scale-105 transition-transform duration-300"
+                />
+              </motion.div>
+            </div>
+          </motion.div>
         </motion.div>
 
         {/* Боковая панель */}
@@ -405,12 +504,12 @@ export default function CreateCard(): React.JSX.Element {
                       Маркетплейс
                     </label>
                     <select
-                      value={selectedMarketplace || ''}
+                      value={selectedMarketplace ?? ''}
                       onChange={(e) => {
                         const marketplaceId = e.target.value ? Number(e.target.value) : null;
                         setSelectedMarketplace(marketplaceId);
-                        const marketplace = marketplaces?.find((mp) => mp.id === marketplaceId);
-                        const slug = marketplace?.slug || null;
+                        const marketplace = marketplaces.find((mp) => mp.id === marketplaceId);
+                        const slug = marketplace?.slug ?? null;
                         setSelectedMarketplaceSlug(slug);
                         if (slug) {
                           const availableSizes = getAvailableSizes(slug);
@@ -422,7 +521,7 @@ export default function CreateCard(): React.JSX.Element {
                       className="w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white shadow-sm hover:shadow-md"
                     >
                       <option value="">Выберите маркетплейс</option>
-                      {marketplaces?.map((mp) => (
+                      {marketplaces.map((mp) => (
                         <option key={mp.id} value={mp.id}>
                           {mp.name}
                         </option>
@@ -430,7 +529,7 @@ export default function CreateCard(): React.JSX.Element {
                     </select>
                   </div>
 
-                  {selectedMarketplace && templates && (
+                  {selectedMarketplace && templates.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -447,7 +546,7 @@ export default function CreateCard(): React.JSX.Element {
                         </div>
                       ) : (
                         <select
-                          value={selectedTemplate || ''}
+                          value={selectedTemplate ?? ''}
                           onChange={(e) =>
                             setSelectedTemplate(e.target.value ? Number(e.target.value) : null)
                           }
@@ -520,11 +619,21 @@ export default function CreateCard(): React.JSX.Element {
                       }}
                       className="w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white shadow-sm hover:shadow-md"
                     >
-                      {[1, 2, 3, 4, 5].map((count) => (
-                        <option key={count} value={count}>
-                          {count} {count === 1 ? 'слайд' : count < 5 ? 'слайда' : 'слайдов'}
-                        </option>
-                      ))}
+                      {[1, 2, 3, 4, 5].map((count) => {
+                        let label: string;
+                        if (count === 1) {
+                          label = 'слайд';
+                        } else if (count < 5) {
+                          label = 'слайда';
+                        } else {
+                          label = 'слайдов';
+                        }
+                        return (
+                          <option key={count} value={count}>
+                            {count} {label}
+                          </option>
+                        );
+                      })}
                     </select>
                     <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
@@ -671,6 +780,45 @@ export default function CreateCard(): React.JSX.Element {
           </Card>
         </motion.div>
       </div>
+
+      {/* Модальное окно для просмотра картинки */}
+      <AnimatePresence>
+        {selectedExampleImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedExampleImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-5xl max-h-[90vh] w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Кнопка закрытия */}
+              <motion.button
+                whileHover={{ scale: 1.1, rotate: 90 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setSelectedExampleImage(null)}
+                className="absolute top-4 right-4 z-10 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-colors"
+                aria-label="Закрыть"
+              >
+                <X className="h-6 w-6 text-gray-800" />
+              </motion.button>
+
+              {/* Изображение */}
+              <img
+                src={selectedExampleImage}
+                alt="Пример карточки товара"
+                className="w-full h-auto max-h-[90vh] object-contain rounded-lg shadow-2xl bg-white"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
