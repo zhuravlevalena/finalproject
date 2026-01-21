@@ -25,6 +25,40 @@ class ImageService {
     if (!image) {
       return null;
     }
+
+    // Удаляем файл с диска
+    try {
+      const imageUrl = image.url;
+      if (imageUrl) {
+        // Определяем путь к файлу в зависимости от URL
+        let filepath;
+        if (imageUrl.startsWith('/img/')) {
+          // Файл в папке img
+          const filename = path.basename(imageUrl);
+          filepath = path.join(__dirname, '../img', filename);
+        } else if (imageUrl.startsWith('/uploads/')) {
+          // Файл в папке uploads
+          const filename = path.basename(imageUrl);
+          filepath = path.join(__dirname, '../../uploads', filename);
+        }
+
+        if (filepath) {
+          try {
+            await fs.access(filepath);
+            await fs.unlink(filepath);
+            console.log('Файл удален с диска:', filepath);
+          } catch (fileError) {
+            // Файл не найден - это нормально, возможно уже удален
+            console.warn('Файл не найден при удалении:', filepath);
+          }
+        }
+      }
+    } catch (fileError) {
+      console.error('Ошибка при удалении файла:', fileError);
+      // Продолжаем удаление записи из БД даже если файл не удалился
+    }
+
+    // Удаляем запись из БД
     await image.destroy();
     return true;
   }
