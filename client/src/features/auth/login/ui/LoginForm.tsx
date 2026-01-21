@@ -53,10 +53,10 @@ export default function LoginForm(): React.JSX.Element {
       };
 
       const errorMessage =
-        serverError.message ||
-        serverError.error ||
-        serverError.response?.data?.message ||
-        serverError.response?.data?.error ||
+        serverError.message ??
+        serverError.error ??
+        serverError.response?.data?.message ??
+        serverError.response?.data?.error ??
         'Произошла ошибка при входе. Попробуйте еще раз.';
 
       setErrors({ submit: errorMessage });
@@ -88,7 +88,7 @@ export default function LoginForm(): React.JSX.Element {
               required
               autoComplete="off"
               onFocus={(e) => {
-                // Предотвращаем автозаполнение при программном фокусе
+                
                 const target = e.target as HTMLInputElement;
                 if (target.value === '') {
                   target.setAttribute('readonly', 'readonly');
@@ -128,7 +128,7 @@ export default function LoginForm(): React.JSX.Element {
                 required
                 autoComplete="off"
                 onFocus={(e) => {
-                  // Предотвращаем автозаполнение при программном фокусе
+                 
                   const target = e.target as HTMLInputElement;
                   if (target.value === '') {
                     target.setAttribute('readonly', 'readonly');

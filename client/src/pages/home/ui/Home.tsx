@@ -3,6 +3,7 @@ import { useAuth } from '@/shared/hooks/use-auth';
 import { Button } from '@/shared/ui/button';
 import { Loader2, Sparkles, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useLocation } from 'wouter';
 
 
 // Моковые карточки товаров с полной информацией
@@ -99,7 +100,8 @@ const previewCards = [
 
 export default function Home(): React.JSX.Element {
   const [isDark, setIsDark] = useState(false);
-  const { isLoading: isAuthLoading } = useAuth();
+  const { isLoading: isAuthLoading, user } = useAuth();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -151,6 +153,13 @@ export default function Home(): React.JSX.Element {
             <Button
               size="lg"
               className="text-lg px-8 py-6 rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30 cursor-pointer"
+              onClick={() => {
+                if (user) {
+                  setLocation('/create-card');
+                } else {
+                  setLocation('/login');
+                }
+              }}
             >
               <Sparkles className="mr-2 h-5 w-5" />
               Начать работу
