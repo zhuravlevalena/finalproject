@@ -86,8 +86,8 @@ export default function TemplateSelectionPage(): React.JSX.Element {
           </svg>
           Назад
         </button>
-        <h1 className="text-3xl font-bold text-gray-900">Выберите категорию шаблона</h1>
-        <p className="text-gray-600 mt-2">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Выберите категорию шаблона</h1>
+        <p className="text-gray-600 dark:text-gray-300 mt-2">
           Маркетплейс: <span className="font-semibold capitalize">{marketplace}</span>
         </p>
       </div>
@@ -98,7 +98,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
           {templates.map((template) => (
             <div
               key={template.id}
-              className="border-2 border-gray-200 rounded-lg p-6 hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group"
+              className="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group bg-white dark:bg-gray-900"
               onClick={() => handleTemplateSelect(template.id)}
             >
               <div className="flex items-start gap-4">
@@ -117,18 +117,18 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
                     {template.name}
                   </h3>
                   {template.description && (
-                    <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{template.description}</p>
                   )}
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                     {(template as unknown as { layouts?: unknown[] }).layouts?.length ?? 0} макетов
                   </p>
                 </div>
                 <svg
-                  className="text-gray-400 group-hover:text-blue-600 transition-colors"
+                  className="text-gray-400 dark:text-gray-500 group-hover:text-blue-600 transition-colors"
                   width="20"
                   height="20"
                   viewBox="0 0 24 24"

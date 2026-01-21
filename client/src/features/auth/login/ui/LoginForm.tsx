@@ -19,7 +19,6 @@ export default function LoginForm(): React.JSX.Element {
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    // Автофокус на первое поле при открытии формы
     emailRef.current?.focus();
   }, []);
 
@@ -69,15 +68,15 @@ export default function LoginForm(): React.JSX.Element {
   return (
     <Card className="w-full max-w-md mx-auto shadow-xl">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Вход в аккаунт</CardTitle>
-        <p className="text-center text-sm text-gray-600">Войдите, чтобы начать играть</p>
+        <CardTitle className="text-2xl font-bold text-center dark:text-white">Вход в аккаунт</CardTitle>
+        <p className="text-center text-sm text-gray-600 dark:text-gray-300">Войдите, чтобы начать играть</p>
       </CardHeader>
       <CardContent>
         <form onSubmit={submitHandler} className="space-y-4">
           <div className="space-y-2">
             <label
               htmlFor="email"
-              className="text-sm font-medium leading-none text-gray-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm font-medium leading-none text-gray-700 dark:text-gray-200 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               Email
             </label>
@@ -107,7 +106,7 @@ export default function LoginForm(): React.JSX.Element {
                   passwordRef.current?.focus();
                 }
               }}
-              className="flex h-12 w-full rounded-2xl border border-white/40 organic-input px-4 py-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
+              className="flex h-12 w-full rounded-2xl border border-white/40 organic-input px-4 py-3 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 dark:placeholder:text-gray-400 text-gray-800 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
               placeholder="example@email.com"
             />
             {errors.email && <p className="text-sm text-red-300">{errors.email}</p>}
@@ -116,7 +115,7 @@ export default function LoginForm(): React.JSX.Element {
           <div className="space-y-2">
             <label
               htmlFor="password"
-              className="text-sm font-medium leading-none text-gray-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm font-medium leading-none text-gray-700 dark:text-gray-200 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               Пароль
             </label>
@@ -150,7 +149,7 @@ export default function LoginForm(): React.JSX.Element {
                     emailRef.current?.focus();
                   }
                 }}
-                className="flex h-12 w-full rounded-2xl border border-border/50 organic-input px-4 py-3 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
+                className="flex h-12 w-full rounded-2xl border border-border/50 organic-input px-4 py-3 pr-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground dark:placeholder:text-gray-400 text-gray-800 dark:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300"
                 placeholder="Введите пароль"
               />
               <button
