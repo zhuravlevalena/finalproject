@@ -65,7 +65,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
   ({ onSave, initialImage, backgroundImage, cardSize, card }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
-    const isRestoringRef = useRef(false); // чтобы не писать историю во время загрузки/отката
+    const isRestoringRef = useRef(false);
     const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
     const [history, setHistory] = useState<{ undo: string[]; redo: string[] }>({
       undo: [],
@@ -95,9 +95,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
           redo: [],
         }));
       } catch (error) {
-        // Логируем, но не роняем весь редактор, если Fabric не может сериализовать объект
-        // Это особенно важно для макетов, загруженных из сидов, где структура может отличаться
-         
         console.error('Error saving canvas history:', error);
       }
     }, []);
@@ -159,7 +156,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             editable: true,
             selectable: true,
             evented: true,
-            splitByGrapheme: true, // Для правильного переноса строк
+            splitByGrapheme: true,
           });
 
           canvas.add(textbox);
@@ -171,7 +168,10 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       [textProps.fontFamily, textProps.fill, saveHistory],
     );
 
-    const getCanvasData = useCallback((): { fabric?: Record<string, unknown>; meta?: Record<string, unknown> } | null => {
+    const getCanvasData = useCallback((): {
+      fabric?: Record<string, unknown>;
+      meta?: Record<string, unknown>;
+    } | null => {
       if (!fabricCanvasRef.current) return null;
       const fabricJson = fabricCanvasRef.current.toJSON();
       const meta = {
@@ -207,35 +207,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         backgroundColor: '#ffffff',
         preserveObjectStacking: true,
       });
-      
-      // Автоматическое масштабирование для размещения canvas в контейнере
-      const calculateInitialZoom = (): void => {
-        if (!canvasContainerRef.current) return;
-        const containerWidth = canvasContainerRef.current.clientWidth - 32; // учитываем padding
-        const containerHeight = canvasContainerRef.current.clientHeight - 32;
-        
-        const scaleX = containerWidth / width;
-        const scaleY = containerHeight / height;
-        const initialZoom = Math.min(scaleX, scaleY, 1) * 100; // не больше 100%
-        
-        // Устанавливаем минимальный zoom 30% и максимальный 100%
-        const clampedZoom = Math.max(30, Math.min(100, Math.floor(initialZoom)));
-        setZoom(clampedZoom);
-      };
-      
-      // Обработчик изменения размера окна для пересчета zoom
-      const handleResize = (): void => {
-        calculateInitialZoom();
-      };
-      
-      window.addEventListener('resize', handleResize);
-      
-      // Вычисляем начальный zoom после небольшой задержки, чтобы контейнер успел отрендериться
-      const timeoutId = setTimeout(() => {
-        calculateInitialZoom();
-      }, 100);
-      
-      // Стартовая точка истории (позволяет сделать undo сразу после загрузки)
       setHistory({
         undo: [JSON.stringify(canvas.toJSON())],
         redo: [],
@@ -269,12 +240,10 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             const [sourceWidth, sourceHeight] = sourceSize.split('x').map(Number);
             const [targetWidth, targetHeight] = cardSize.split('x').map(Number);
 
-            // Вычисляем коэффициенты масштабирования
             const scaleX = targetWidth / sourceWidth;
             const scaleY = targetHeight / sourceHeight;
 
             canvas.loadFromJSON(fabricData, () => {
-              // Масштабируем все объекты, если размер canvas изменился
               if (scaleX !== 1 || scaleY !== 1) {
                 const bgImage = canvas.backgroundImage;
                 const bgVpt = canvas.backgroundVpt;
@@ -287,7 +256,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     return;
                   }
 
-                  // Масштабируем координаты
                   if (obj.left !== undefined) {
                     obj.set('left', (obj.left ?? 0) * scaleX);
                   }
@@ -295,7 +263,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     obj.set('top', (obj.top ?? 0) * scaleY);
                   }
 
-                  // Масштабируем размеры объектов
                   if (obj.width !== undefined) {
                     obj.set('width', (obj.width ?? 0) * scaleX);
                   }
@@ -303,22 +270,19 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     obj.set('height', (obj.height ?? 0) * scaleY);
                   }
 
-                  // Масштабируем радиус для кругов
                   if (obj.type === 'circle' && 'radius' in obj) {
                     const circle = obj as fabric.Circle;
                     const avgScale = (scaleX + scaleY) / 2; // Для кругов используем средний масштаб
                     circle.set('radius', (circle.radius ?? 0) * avgScale);
                   }
 
-                  // Масштабируем размер шрифта для текстовых объектов
                   if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
                     const textObj = obj as fabric.Textbox | fabric.IText | fabric.Text;
-                    const avgScale = (scaleX + scaleY) / 2; // Для текста используем средний масштаб
+                    const avgScale = (scaleX + scaleY) / 2;
                     const updates: Record<string, unknown> = {};
                     if (textObj.fontSize) {
                       updates.fontSize = textObj.fontSize * avgScale;
                     }
-                    // Также масштабируем ширину текстового блока
                     if (textObj.width !== undefined) {
                       updates.width = (textObj.width ?? 0) * scaleX;
                     }
@@ -327,13 +291,11 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     }
                   }
 
-                  // Масштабируем strokeWidth
                   if (obj.strokeWidth !== undefined && obj.strokeWidth > 0) {
                     const avgScale = (scaleX + scaleY) / 2;
                     obj.set('strokeWidth', obj.strokeWidth * avgScale);
                   }
 
-                  // Масштабируем координаты для линий
                   if (obj.type === 'line') {
                     const line = obj as fabric.Line;
                     if (line.x1 !== undefined) line.set('x1', line.x1 * scaleX);
@@ -342,7 +304,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     if (line.y2 !== undefined) line.set('y2', line.y2 * scaleY);
                   }
 
-                  // Масштабируем радиусы скругления для прямоугольников
                   if (obj.type === 'rect') {
                     const rect = obj as fabric.Rect;
                     if (rect.rx !== undefined && rect.rx > 0) {
@@ -353,7 +314,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     }
                   }
 
-                  // Обновляем координаты объекта после масштабирования
                   obj.setCoords();
                 });
               }
@@ -369,7 +329,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 if (bgVpt2 && typeof bgVpt2 === 'object' && obj === bgVpt2) {
                   return;
                 }
-                // Устанавливаем правильные настройки для редактирования
                 obj.set({
                   selectable: true,
                   evented: true,
@@ -396,9 +355,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 }
               });
               canvas.renderAll();
-              // Обновляем выбранный объект после загрузки (если есть активный объект)
-              updateSelectedObject();
-              // Фиксируем состояние после загрузки макета
               setHistory({
                 undo: [JSON.stringify(canvas.toJSON())],
                 redo: [],
@@ -441,8 +397,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       canvas.on('object:scaling', updateSelectedObject);
       canvas.on('object:rotating', updateSelectedObject);
 
-      // События редактирования текста
-      // options.target - текущий текстовый объект
       canvas.on('text:changed', () => {
         historySafe();
         updateSelectedObject();
@@ -482,15 +436,12 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       canvas.on('editing:exited', (options) => {
         const target = options.target as fabric.Textbox | undefined;
         if (target) {
-          // После выхода из режима редактирования фиксируем состояние в истории
           saveHistory();
           updateSelectedObject();
         }
       });
 
-      // Обработчик клавиатуры для удаления объектов (Delete/Backspace)
       const handleKeyDown = (e: KeyboardEvent): void => {
-        // Пропускаем, если пользователь редактирует текст в input/textarea
         if (
           e.target instanceof HTMLInputElement ||
           e.target instanceof HTMLTextAreaElement ||
@@ -521,7 +472,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         }
       };
 
-      // Добавляем обработчик клавиатуры
       window.addEventListener('keydown', handleKeyDown);
 
       fabricCanvasRef.current = canvas;
@@ -538,7 +488,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       };
     }, [cardSize, saveHistory, updateSelectedObject, card]);
 
-    // При смене масштаба пересчитываем offset для правильных координат мыши (canvas в scale-обёртке)
     useEffect(() => {
       const c = fabricCanvasRef.current;
       if (!c) return;
@@ -635,19 +584,15 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         if (!file || !fabricCanvasRef.current) return;
 
         try {
-          // Сначала загружаем файл на сервер
           const uploadedImage = await imageService.upload(file);
 
-          // Получаем URL с сервера - используем полный URL
           let imageUrl = uploadedImage.url;
           if (!imageUrl.startsWith('http')) {
-            // Если URL относительный, добавляем базовый URL
             imageUrl = `${window.location.origin}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
           }
 
           console.log('Loading image from URL:', imageUrl);
 
-          // Добавляем в canvas через URL (не base64!)
           fabric.Image.fromURL(
             imageUrl,
             (img) => {
@@ -683,7 +628,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
           );
         } catch (error) {
           console.error('Error uploading image:', error);
-          // eslint-disable-next-line no-alert
           alert(
             `Ошибка при загрузке изображения: ${
               error instanceof Error ? error.message : 'Неизвестная ошибка'
@@ -716,7 +660,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       fabricCanvasRef.current.discardActiveObject();
       fabricCanvasRef.current.renderAll();
       setSelectedObject(null);
-      saveHistory(); // Сохраняем историю после удаления
+      saveHistory();
     };
 
     // Дублирование объекта
@@ -743,7 +687,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         if (prev.undo.length < 2) return prev;
         const current = JSON.stringify(fabricCanvasRef.current!.toJSON());
         const target = prev.undo[prev.undo.length - 2];
-        // Загружаем состояние после обновления стейта истории
         setTimeout(() => loadFromHistory(target), 0);
         return {
           undo: prev.undo.slice(0, -1),
@@ -768,7 +711,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       });
     };
 
-    // Обновление текстовых свойств (textbox, text, i-text)
+    // Обновление текстовых свойств
     const updateTextProperty = (property: string, value: string | number): void => {
       if (!fabricCanvasRef.current || !selectedObject) return;
       const t = selectedObject.type;
@@ -780,7 +723,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       updateSelectedObject();
     };
 
-    // Изменение размера шрифта (textbox, text, i-text)
+    // Изменение размера шрифта
     const handleFontSizeChange = (delta: number): void => {
       if (!selectedObject) return;
       const t = selectedObject.type;
@@ -809,7 +752,6 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       if (!fabricCanvasRef.current) return;
       setIsLoading(true);
       try {
-        // 1. Конвертируем canvas в PNG для превью/экспорта
         const dataURL = fabricCanvasRef.current.toDataURL({
           format: 'png',
           quality: 1,
@@ -821,27 +763,20 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         const timestamp = String(Date.now());
         const file = new File([blob], `card-${timestamp}.png`, { type: 'image/png' });
 
-        // 2. Получаем полный Fabric JSON для восстановления карточки
         let fabricJson: Record<string, unknown> | null = null;
         try {
           fabricJson = fabricCanvasRef.current.toJSON();
         } catch (jsonError) {
-          // Если Fabric не может корректно сериализовать объект (частая проблема с textbox/styles),
-          // не роняем весь поток сохранения — просто логируем и продолжаем без fabric JSON.
-          // В этом случае карточка сохранится как готовое изображение, а не редактируемый макет.
-           
           console.error('Error serializing canvas to JSON:', jsonError);
         }
 
-        // 3. Метаданные
         const meta = {
           width: fabricCanvasRef.current.getWidth(),
           height: fabricCanvasRef.current.getHeight(),
-          cardSize, // Сохраняем размер карточки для правильного масштабирования при загрузке
+          cardSize,
           objectsCount: fabricCanvasRef.current.getObjects().length,
         };
 
-        // 4. Отправляем всё вместе (await, чтобы дождаться редиректа и т.п. в родителе)
         await Promise.resolve(
           onSave(file, {
             fabric: fabricJson ?? undefined, // Полный JSON для восстановления (если доступен)
@@ -850,13 +785,13 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         );
       } catch (error) {
         console.error('Error saving canvas:', error);
-        // eslint-disable-next-line no-alert
         alert('Ошибка при сохранении карточки');
       } finally {
         setIsLoading(false);
       }
     };
-    // Изменение масштаба (масштаб применяется к обёртке через style в JSX, transform-origin: top left — без смещения)
+
+    // Изменение масштаба
     const handleZoom = (delta: number): void => {
       setZoom((z) => Math.max(25, Math.min(200, z + delta)));
     };
@@ -894,9 +829,9 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
 
     const isTextSelected = Boolean(
       selectedObject &&
-        (selectedObject.type === 'textbox' ||
-          selectedObject.type === 'text' ||
-          selectedObject.type === 'i-text'),
+      (selectedObject.type === 'textbox' ||
+        selectedObject.type === 'text' ||
+        selectedObject.type === 'i-text'),
     );
     const isImageSelected = selectedObject?.type === 'image';
     const hasFill = Boolean(
@@ -922,6 +857,12 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       <div className="flex flex-col h-full">
         {/* Верхняя панель инструментов */}
         <div className="flex items-center gap-2 p-3 bg-gray-50 border-b border-gray-200 flex-wrap">
+          {/* Размер карточки */}
+          <div className="flex items-center gap-2 border-r pr-2 mr-2">
+            <span className="text-sm font-medium text-gray-700">Размер:</span>
+            <span className="text-sm text-gray-600">{cardSize}</span>
+          </div>
+
           {/* Группа добавления */}
           <div className="flex items-center gap-1 border-r pr-2 mr-2">
             <button
@@ -1021,9 +962,9 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
-          {/* Canvas область: items-start justify-start и transform-origin: top left — макет не смещается при выборе и зуме */}
-          <div ref={canvasContainerRef} className="flex-1 flex items-start justify-start p-4 bg-gray-100 overflow-auto min-h-0">
+        <div className="flex flex-1 overflow-hidden">
+          {/* Canvas область - теперь занимает всю ширину */}
+          <div className="flex-1 flex items-start justify-start p-4 bg-gray-100 overflow-auto min-h-0 w-full">
             <div
               className="relative inline-block"
               style={{
@@ -1105,143 +1046,142 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             </div>
           </div>
 
-          {/* Правая панель свойств (всегда видна — без смещения макета при выборе) */}
-          <div className="w-full md:w-80 flex-shrink-0 bg-white border-t md:border-t-0 md:border-l border-gray-200 p-4 overflow-y-auto">
-            {!selectedObject ? (
-              <p className="text-gray-500 text-sm">Выберите объект на холсте для редактирования</p>
-            ) : (
+          {/* Правая панель свойств - показывается только когда выбран объект */}
+          {selectedObject && (
+            <div className="w-80 flex-shrink-0 bg-white border-l border-gray-200 p-4 overflow-y-auto">
               <>
                 <h3 className="text-lg font-semibold mb-4">Редактирование</h3>
 
                 {/* Редактирование текста */}
                 {isTextSelected && (
-                <div className="space-y-4">
-                  {/* Размер шрифта */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Размер шрифта</label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleFontSizeChange(-2)}
-                        className="p-1.5 bg-gray-100 rounded hover:bg-gray-200"
+                  <div className="space-y-4">
+                    {/* Размер шрифта */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Размер шрифта</label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleFontSizeChange(-2)}
+                          className="p-1.5 bg-gray-100 rounded hover:bg-gray-200"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <input
+                          type="number"
+                          value={textProps.fontSize}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value, 10) || 24;
+                            updateTextProperty('fontSize', Math.max(8, Math.min(200, value)));
+                          }}
+                          className="flex-1 p-2 border border-gray-300 rounded text-center"
+                          min="8"
+                          max="200"
+                        />
+                        <button
+                          onClick={() => handleFontSizeChange(2)}
+                          className="p-1.5 bg-gray-100 rounded hover:bg-gray-200"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Шрифт */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Шрифт</label>
+                      <select
+                        value={textProps.fontFamily}
+                        onChange={(e) => updateTextProperty('fontFamily', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded"
                       >
-                        <Minus className="h-3 w-3" />
-                      </button>
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Impact">Impact</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                      </select>
+                    </div>
+
+                    {/* Цвет текста */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Цвет текста</label>
                       <input
-                        type="number"
-                        value={textProps.fontSize}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value, 10) || 24;
-                          updateTextProperty('fontSize', Math.max(8, Math.min(200, value)));
-                        }}
-                        className="flex-1 p-2 border border-gray-300 rounded text-center"
-                        min="8"
-                        max="200"
+                        type="color"
+                        value={textProps.fill}
+                        onChange={(e) => updateTextProperty('fill', e.target.value)}
+                        className="w-full h-10 border border-gray-300 rounded cursor-pointer"
                       />
-                      <button
-                        onClick={() => handleFontSizeChange(2)}
-                        className="p-1.5 bg-gray-100 rounded hover:bg-gray-200"
-                      >
-                        <Plus className="h-3 w-3" />
-                      </button>
                     </div>
-                  </div>
 
-                  {/* Шрифт */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Шрифт</label>
-                    <select
-                      value={textProps.fontFamily}
-                      onChange={(e) => updateTextProperty('fontFamily', e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded"
-                    >
-                      <option value="Arial">Arial</option>
-                      <option value="Times New Roman">Times New Roman</option>
-                      <option value="Courier New">Courier New</option>
-                      <option value="Georgia">Georgia</option>
-                      <option value="Verdana">Verdana</option>
-                      <option value="Impact">Impact</option>
-                      <option value="Comic Sans MS">Comic Sans MS</option>
-                    </select>
-                  </div>
-
-                  {/* Цвет текста */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Цвет текста</label>
-                    <input
-                      type="color"
-                      value={textProps.fill}
-                      onChange={(e) => updateTextProperty('fill', e.target.value)}
-                      className="w-full h-10 border border-gray-300 rounded cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Стили текста */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Стиль</label>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          const newWeight = textProps.fontWeight === 'bold' ? 'normal' : 'bold';
-                          updateTextProperty('fontWeight', newWeight);
-                        }}
-                        className={`flex-1 p-2 border rounded ${
-                          textProps.fontWeight === 'bold'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        <Bold className="h-4 w-4 mx-auto" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          const newStyle = textProps.fontStyle === 'italic' ? 'normal' : 'italic';
-                          updateTextProperty('fontStyle', newStyle);
-                        }}
-                        className={`flex-1 p-2 border rounded ${
-                          textProps.fontStyle === 'italic'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        <Italic className="h-4 w-4 mx-auto" />
-                      </button>
+                    {/* Стили текста */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Стиль</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const newWeight = textProps.fontWeight === 'bold' ? 'normal' : 'bold';
+                            updateTextProperty('fontWeight', newWeight);
+                          }}
+                          className={`flex-1 p-2 border rounded ${
+                            textProps.fontWeight === 'bold'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <Bold className="h-4 w-4 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            const newStyle = textProps.fontStyle === 'italic' ? 'normal' : 'italic';
+                            updateTextProperty('fontStyle', newStyle);
+                          }}
+                          className={`flex-1 p-2 border rounded ${
+                            textProps.fontStyle === 'italic'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <Italic className="h-4 w-4 mx-auto" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Выравнивание */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Выравнивание</label>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => updateTextProperty('textAlign', 'left')}
-                        className={`flex-1 p-2 border rounded ${
-                          textProps.textAlign === 'left'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        <AlignLeft className="h-4 w-4 mx-auto" />
-                      </button>
-                      <button
-                        onClick={() => updateTextProperty('textAlign', 'center')}
-                        className={`flex-1 p-2 border rounded ${
-                          textProps.textAlign === 'center'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        <AlignCenter className="h-4 w-4 mx-auto" />
-                      </button>
-                      <button
-                        onClick={() => updateTextProperty('textAlign', 'right')}
-                        className={`flex-1 p-2 border rounded ${
-                          textProps.textAlign === 'right'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        <AlignRight className="h-4 w-4 mx-auto" />
-                      </button>
+                    {/* Выравнивание */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Выравнивание</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateTextProperty('textAlign', 'left')}
+                          className={`flex-1 p-2 border rounded ${
+                            textProps.textAlign === 'left'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <AlignLeft className="h-4 w-4 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => updateTextProperty('textAlign', 'center')}
+                          className={`flex-1 p-2 border rounded ${
+                            textProps.textAlign === 'center'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <AlignCenter className="h-4 w-4 mx-auto" />
+                        </button>
+                        <button
+                          onClick={() => updateTextProperty('textAlign', 'right')}
+                          className={`flex-1 p-2 border rounded ${
+                            textProps.textAlign === 'right'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <AlignRight className="h-4 w-4 mx-auto" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1281,15 +1221,14 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                         <RotateCw className="h-4 w-4" />
                       </button>
                     </div>
-                  </div>
 
-                  <div>
-                    <p className="text-sm text-gray-600">
-                      Используйте углы для изменения размера, центр для перемещения
-                    </p>
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        Используйте углы для изменения размера, центр для перемещения
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Изменение цвета для объектов с заливкой */}
               {hasFill && (
@@ -1385,7 +1324,8 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 {/* Общие свойства */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="text-xs text-gray-500">
-                    {selectedObject.type === 'textbox' && 'Дважды кликните для редактирования текста'}
+                    {selectedObject.type === 'textbox' &&
+                      'Дважды кликните для редактирования текста'}
                     {(selectedObject.type === 'text' || selectedObject.type === 'i-text') &&
                       'Дважды кликните для редактирования текста'}
                     {selectedObject.type === 'image' &&
@@ -1393,8 +1333,8 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                   </p>
                 </div>
               </>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     );
