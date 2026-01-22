@@ -93,7 +93,7 @@ const editorSlice = createSlice({
     bringToFront: (state, action: PayloadAction<string>) => {
       const element = state.elements.find((el) => el.id === action.payload);
       if (element) {
-        const maxZIndex = Math.max(...state.elements.map((el) => el.zIndex || 0));
+        const maxZIndex = Math.max(...state.elements.map((el) => el.zIndex ?? 0));
         element.zIndex = maxZIndex + 1;
         state.isDirty = true;
       }
@@ -102,7 +102,7 @@ const editorSlice = createSlice({
     sendToBack: (state, action: PayloadAction<string>) => {
       const element = state.elements.find((el) => el.id === action.payload);
       if (element) {
-        const minZIndex = Math.min(...state.elements.map((el) => el.zIndex || 0));
+        const minZIndex = Math.min(...state.elements.map((el) => el.zIndex ?? 0));
         element.zIndex = minZIndex - 1;
         state.isDirty = true;
       }
