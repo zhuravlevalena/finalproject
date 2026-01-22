@@ -132,9 +132,7 @@ async function runSearch(query: string): Promise<SearchResult> {
   if (templatesRes.status === 'fulfilled') {
     for (const template of templatesRes.value) {
       layoutsPromises.push(
-        layoutService.getLayoutsByTemplateId(template.id).catch(() => {
-          return [];
-        }),
+        layoutService.getLayoutsByTemplateId(template.id).catch(() => []),
       );
     }
   }

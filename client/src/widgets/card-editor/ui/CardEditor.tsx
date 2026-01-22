@@ -72,6 +72,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       redo: [],
     });
     const [zoom, setZoom] = useState(100);
+    const canvasContainerRef = useRef<HTMLDivElement | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     // Текстовые свойства для панели редактирования
@@ -211,12 +212,26 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       });
 
       // Загружаем сохраненные данные, если есть
-      if (card?.canvasData && typeof card.canvasData === 'object' && 'fabric' in card.canvasData) {
-        const canvasData = card.canvasData as {
-          fabric?: Record<string, unknown>;
-          meta?: { cardSize?: string; [key: string]: unknown };
-        };
-        const fabricData = canvasData.fabric;
+      if (card?.canvasData) {
+        let fabricData: Record<string, unknown> | null = null;
+        let meta: { cardSize?: string; [key: string]: unknown } | undefined = undefined;
+        
+        // Проверяем разные форматы данных
+        if (typeof card.canvasData === 'object' && 'fabric' in card.canvasData) {
+          // Формат: { fabric: {...}, meta: {...} }
+          const canvasData = card.canvasData as {
+            fabric?: Record<string, unknown>;
+            meta?: { cardSize?: string; [key: string]: unknown };
+          };
+          fabricData = canvasData.fabric || null;
+          meta = canvasData.meta;
+        } else if (typeof card.canvasData === 'object' && ('version' in card.canvasData || 'objects' in card.canvasData)) {
+          // Формат напрямую из сидера: { version, objects }
+          fabricData = card.canvasData as Record<string, unknown>;
+        }
+        
+        console.log('🔍 Loading canvas data:', { fabricData, cardCanvasData: card.canvasData, hasFabric: !!fabricData });
+        
         if (fabricData) {
           try {
             const sourceSize = canvasData.meta?.cardSize || '900x1200';
@@ -322,6 +337,10 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 undo: [JSON.stringify(canvas.toJSON())],
                 redo: [],
               });
+              // Пересчитываем zoom после загрузки данных
+              setTimeout(() => {
+                calculateInitialZoom();
+              }, 150);
             });
           } catch (err) {
             console.error('Error loading canvas data:', err);
@@ -732,6 +751,37 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       setZoom((z) => Math.max(25, Math.min(200, z + delta)));
     };
 
+    // Обновление цвета заливки для всех объектов
+    const updateFillColor = (color: string): void => {
+      if (!fabricCanvasRef.current || !selectedObject) return;
+      selectedObject.set('fill', color);
+      fabricCanvasRef.current.renderAll();
+      updateSelectedObject();
+      saveHistory();
+    };
+
+    // Обновление цвета обводки для всех объектов
+    const updateStrokeColor = (color: string): void => {
+      if (!fabricCanvasRef.current || !selectedObject) return;
+      selectedObject.set('stroke', color);
+      fabricCanvasRef.current.renderAll();
+      updateSelectedObject();
+      saveHistory();
+    };
+
+    // Обновление радиуса скругления углов для прямоугольников
+    const updateCornerRadius = (radius: number): void => {
+      if (!fabricCanvasRef.current || !selectedObject) return;
+      if (selectedObject.type !== 'rect') return;
+      
+      const rect = selectedObject as fabric.Rect;
+      rect.set('rx', radius);
+      rect.set('ry', radius);
+      fabricCanvasRef.current.renderAll();
+      updateSelectedObject();
+      saveHistory();
+    };
+
     const isTextSelected = Boolean(
       selectedObject &&
       (selectedObject.type === 'textbox' ||
@@ -739,6 +789,24 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         selectedObject.type === 'i-text'),
     );
     const isImageSelected = selectedObject?.type === 'image';
+    const hasFill = Boolean(
+      selectedObject &&
+        (selectedObject.type === 'rect' ||
+          selectedObject.type === 'circle' ||
+          selectedObject.type === 'ellipse' ||
+          selectedObject.type === 'triangle' ||
+          selectedObject.type === 'polygon' ||
+          isTextSelected),
+    );
+    const hasStroke = Boolean(
+      selectedObject &&
+        (selectedObject.type === 'rect' ||
+          selectedObject.type === 'circle' ||
+          selectedObject.type === 'ellipse' ||
+          selectedObject.type === 'line' ||
+          selectedObject.type === 'triangle' ||
+          selectedObject.type === 'polygon'),
+    );
 
     return (
       <div className="flex flex-col h-full">
@@ -853,13 +921,83 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
           {/* Canvas область - теперь занимает всю ширину */}
           <div className="flex-1 flex items-start justify-start p-4 bg-gray-100 overflow-auto min-h-0 w-full">
             <div
-              className="bg-white shadow-lg rounded-lg p-2 inline-block"
+              className="relative inline-block"
               style={{
                 transform: `scale(${zoom / 100})`,
                 transformOrigin: 'top left',
               }}
             >
-              <canvas ref={canvasRef} />
+              {/* Визуальные разметки границ карточки */}
+              {(() => {
+                const [width, height] = cardSize.split('x').map(Number);
+                return (
+                  <>
+                    {/* Рамка вокруг canvas */}
+                    <div
+                      className="absolute inset-0 border-4 border-blue-500 border-dashed pointer-events-none"
+                      style={{
+                        width: `${width + 16}px`, // +16 для padding
+                        height: `${height + 16}px`,
+                        margin: '-8px',
+                      }}
+                    />
+                    {/* Размеры по краям */}
+                    {/* Верхний край */}
+                    <div
+                      className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-b pointer-events-none"
+                      style={{ marginTop: '-8px' }}
+                    >
+                      {width}px
+                    </div>
+                    {/* Правый край */}
+                    <div
+                      className="absolute right-0 top-1/2 transform translate-x-full -translate-y-1/2 bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-l pointer-events-none whitespace-nowrap"
+                      style={{ marginRight: '-8px' }}
+                    >
+                      {height}px
+                    </div>
+                    {/* Нижний край */}
+                    <div
+                      className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-t pointer-events-none"
+                      style={{ marginBottom: '-8px' }}
+                    >
+                      {width}px
+                    </div>
+                    {/* Левый край */}
+                    <div
+                      className="absolute left-0 top-1/2 transform -translate-x-full -translate-y-1/2 bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-r pointer-events-none whitespace-nowrap"
+                      style={{ marginLeft: '-8px' }}
+                    >
+                      {height}px
+                    </div>
+                    {/* Угловые метки */}
+                    {/* Верхний левый угол */}
+                    <div
+                      className="absolute top-0 left-0 bg-blue-500 w-3 h-3 pointer-events-none"
+                      style={{ marginTop: '-8px', marginLeft: '-8px' }}
+                    />
+                    {/* Верхний правый угол */}
+                    <div
+                      className="absolute top-0 right-0 bg-blue-500 w-3 h-3 pointer-events-none"
+                      style={{ marginTop: '-8px', marginRight: '-8px' }}
+                    />
+                    {/* Нижний левый угол */}
+                    <div
+                      className="absolute bottom-0 left-0 bg-blue-500 w-3 h-3 pointer-events-none"
+                      style={{ marginBottom: '-8px', marginLeft: '-8px' }}
+                    />
+                    {/* Нижний правый угол */}
+                    <div
+                      className="absolute bottom-0 right-0 bg-blue-500 w-3 h-3 pointer-events-none"
+                      style={{ marginBottom: '-8px', marginRight: '-8px' }}
+                    />
+                  </>
+                );
+              })()}
+              {/* Canvas с белым фоном и тенью */}
+              <div className="bg-white shadow-lg rounded-lg p-2 inline-block">
+                <canvas ref={canvasRef} />
+              </div>
             </div>
           </div>
 
@@ -1046,6 +1184,141 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     </div>
                   </div>
                 )}
+
+              {/* Изменение цвета для объектов с заливкой */}
+              {hasFill && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Цвет заливки</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={
+                          selectedObject?.fill && typeof selectedObject.fill === 'string'
+                            ? selectedObject.fill.startsWith('#')
+                              ? selectedObject.fill
+                              : `#${selectedObject.fill}`
+                            : selectedObject?.fill && typeof selectedObject.fill === 'object'
+                              ? '#000000'
+                              : '#000000'
+                        }
+                        onChange={(e) => updateFillColor(e.target.value)}
+                        className="w-full h-10 border border-gray-300 rounded cursor-pointer"
+                      />
+                    </div>
+                    {selectedObject?.fill && typeof selectedObject.fill === 'string' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Текущий: {selectedObject.fill}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Изменение цвета обводки для объектов с обводкой */}
+              {hasStroke && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Цвет обводки</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={
+                          selectedObject?.stroke && typeof selectedObject.stroke === 'string'
+                            ? selectedObject.stroke.startsWith('#')
+                              ? selectedObject.stroke
+                              : `#${selectedObject.stroke}`
+                            : selectedObject?.stroke && typeof selectedObject.stroke === 'object'
+                              ? '#000000'
+                              : selectedObject?.strokeWidth && selectedObject.strokeWidth > 0
+                                ? '#000000'
+                                : '#000000'
+                        }
+                        onChange={(e) => updateStrokeColor(e.target.value)}
+                        className="w-full h-10 border border-gray-300 rounded cursor-pointer"
+                        disabled={!selectedObject?.strokeWidth || selectedObject.strokeWidth === 0}
+                      />
+                    </div>
+                    {selectedObject?.stroke && typeof selectedObject.stroke === 'string' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Текущий: {selectedObject.stroke}
+                      </p>
+                    )}
+                    {(!selectedObject?.strokeWidth || selectedObject.strokeWidth === 0) && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Установите толщину обводки для изменения цвета
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Изменение радиуса скругления для прямоугольников */}
+              {selectedObject && selectedObject.type === 'rect' && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Радиус скругления углов
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={Math.round((selectedObject as fabric.Rect).rx || 0)}
+                        onChange={(e) => updateCornerRadius(Number(e.target.value))}
+                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-600 w-12 text-right">
+                        {Math.round((selectedObject as fabric.Rect).rx || 0)}px
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Используйте ползунок для изменения радиуса скругления
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Поворот для всех объектов */}
+              {selectedObject && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Поворот</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (selectedObject && fabricCanvasRef.current) {
+                            const currentAngle = selectedObject.angle || 0;
+                            selectedObject.set('angle', (currentAngle - 15) % 360);
+                            fabricCanvasRef.current.renderAll();
+                            updateSelectedObject();
+                          }
+                        }}
+                        className="p-2 bg-gray-100 rounded hover:bg-gray-200"
+                      >
+                        <RotateCw className="h-4 w-4 rotate-180" />
+                      </button>
+                      <span className="flex-1 text-center text-sm">
+                        {Math.round(selectedObject?.angle || 0)}°
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (selectedObject && fabricCanvasRef.current) {
+                            const currentAngle = selectedObject.angle || 0;
+                            selectedObject.set('angle', (currentAngle + 15) % 360);
+                            fabricCanvasRef.current.renderAll();
+                            updateSelectedObject();
+                          }
+                        }}
+                        className="p-2 bg-gray-100 rounded hover:bg-gray-200"
+                      >
+                        <RotateCw className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
                 {/* Общие свойства */}
                 <div className="mt-4 pt-4 border-t border-gray-200">

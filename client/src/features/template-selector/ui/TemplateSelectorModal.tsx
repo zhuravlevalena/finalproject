@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { fabric } from 'fabric';
 import { templateService } from '@/entities/template/api/template.service';
 import type { TemplateSchema } from '@/entities/template/model/template.schemas';
@@ -235,11 +236,28 @@ export function TemplateSelectorModal({
     }
   }, [universalLayouts, activeTab, isOpen]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              onClose();
+            }
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+          >
         {/* Header */}
         <div className="flex justify-between items-center p-4 sm:p-6 border-b">
           <div>
@@ -415,7 +433,9 @@ export function TemplateSelectorModal({
             </div>
           )}
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

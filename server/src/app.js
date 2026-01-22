@@ -45,7 +45,7 @@ app.use('/uploads', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'))); // !!!
 
 app.use('/img', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -53,7 +53,7 @@ app.use('/img', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
-app.use('/img', express.static(path.join(__dirname, '../img')));
+app.use('/img', express.static(path.join(__dirname, 'img')));
 
 app.use('/api/auth', authRouter);
 app.use('/api/marketplaces', marketplaceRouter);
@@ -63,8 +63,8 @@ app.use('/api/templates', templateRouter);
 app.use('/api/layouts', layoutRouter);
 app.use('/api/images', imageRouter);
 // app.use('/api/card-versions', cardVersionRouter); // TODO: Enable when route file is created
-app.use('/api/ai',  aiRouter);
-app.use('/api/users', userRouter);;
+app.use('/api/ai', aiRouter);
+app.use('/api/users', userRouter);
 
 app.use((err, req, res, next) => {
   console.log(err);
