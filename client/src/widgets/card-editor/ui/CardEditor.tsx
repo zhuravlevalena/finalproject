@@ -28,6 +28,8 @@ import {
 import { imageService } from '@/entities/image/api/image.service';
 
 type CardEditorProps = {
+  
+  
   onSave: (
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
