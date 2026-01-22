@@ -9,7 +9,7 @@ export const templateService = {
   },
 
   getById: async (id: number): Promise<Template> => {
-    const response = await axiosInstance.get<Template>(`/templates/${id}`);
+    const response = await axiosInstance.get<Template>(`/templates/${id.toString()}`);
     return response.data;
   },
 };

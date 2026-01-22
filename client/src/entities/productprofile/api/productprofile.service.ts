@@ -8,7 +8,7 @@ export const productProfileService = {
   },
 
   getById: async (id: number): Promise<ProductProfile> => {
-    const response = await axiosInstance.get<ProductProfile>(`/product-profiles/${id}`);
+    const response = await axiosInstance.get<ProductProfile>(`/product-profiles/${id.toString()}`);
     return response.data;
   },
 
@@ -18,11 +18,11 @@ export const productProfileService = {
   },
 
   update: async (id: number, data: Partial<ProductProfile>): Promise<ProductProfile> => {
-    const response = await axiosInstance.put<ProductProfile>(`/product-profiles/${id}`, data);
+    const response = await axiosInstance.put<ProductProfile>(`/product-profiles/${id.toString()}`, data);
     return response.data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await axiosInstance.delete(`/product-profiles/${id}`);
+    await axiosInstance.delete(`/product-profiles/${id.toString()}`);
   },
 };

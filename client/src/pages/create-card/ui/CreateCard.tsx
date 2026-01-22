@@ -27,20 +27,20 @@ import { CardEditor } from '@/widgets/card-editor/ui/CardEditor';
 type CardSize = '800x600' | '1024x768' | '1200x900' | '1920x1080';
 type SlideCount = 1 | 2 | 3 | 4 | 5;
 
-// Маппинг размеров карточек для каждого маркетплейса
+
 const marketplaceCardSizes: Record<string, CardSize[]> = {
   wildberries: ['800x600', '1024x768', '1200x900'],
   ozon: ['1024x768', '1200x900', '1920x1080'],
   'yandex-market': ['800x600', '1024x768', '1200x900', '1920x1080'],
 };
 
-// Функция для получения доступных размеров по маркетплейсу
+
 const getAvailableSizes = (marketplaceSlug: string | null): CardSize[] => {
   if (!marketplaceSlug) return [];
   return marketplaceCardSizes[marketplaceSlug] ?? ['1024x768'];
 };
 
-// Тип для данных слайда
+
 type SlideData = {
   canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> };
   uploadedImage?: { id: number; url: string } | null;
@@ -68,7 +68,7 @@ export default function CreateCard(): React.JSX.Element {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [selectedExampleImage, setSelectedExampleImage] = useState<string | null>(null);
 
-  // Массив данных для каждого слайда
+ 
   const [slides, setSlides] = useState<SlideData[]>([
     {
       canvasData: undefined,
@@ -81,7 +81,7 @@ export default function CreateCard(): React.JSX.Element {
   const { templates, loading: templatesLoading } = useAppSelector((state) => state.template);
   const { uploading: isUploadingImage } = useAppSelector((state) => state.image);
 
-  // Обновляем массив слайдов при изменении slideCount
+  
   useEffect(() => {
     setSlides((prev) => {
       const newSlides = [...prev];
@@ -115,34 +115,34 @@ export default function CreateCard(): React.JSX.Element {
     }
   }, [dispatch, selectedMarketplace]);
 
-  // Загружаем изображение из URL параметров если есть
+  
   useEffect(() => {
-    const imageId = searchParams.get('imageId');
-    const imageUrl = searchParams.get('imageUrl');
-    
-    if (imageId && imageUrl) {
-      // Загружаем полную информацию об изображении
-      dispatch(fetchImageByIdThunk(Number(imageId))).then((result) => {
-        if (fetchImageByIdThunk.fulfilled.match(result)) {
-          const imageData = { id: result.payload.id, url: result.payload.url };
-          setSlides((prev) => {
-            const newSlides = [...prev];
-            newSlides[0] = {
-              ...newSlides[0],
-              uploadedImage: imageData,
-            };
-            return newSlides;
-          });
-          // Переключаемся на вкладку изображений
-          setActiveTab('images');
-          // Очищаем URL параметры
-          window.history.replaceState({}, '', '/create-card');
-        }
-      });
-    }
-  }, [dispatch, searchParams]);
+  // eslint-disable-next-line no-shadow
+  const searchParams = new URLSearchParams(window.location.search);
+  const imageId = searchParams.get('imageId');
+  
+  if (imageId) {
+    void dispatch(fetchImageByIdThunk(Number(imageId))).then((result) => {
+      if (fetchImageByIdThunk.fulfilled.match(result)) {
+        const imageData = { id: result.payload.id, url: result.payload.url };
+        setSlides((prev) => {
+          const newSlides = [...prev];
+          newSlides[0] = {
+            ...newSlides[0],
+            uploadedImage: imageData,
+          };
+          return newSlides;
+        });
+       
+        setActiveTab('images');
+       
+        window.history.replaceState({}, '', '/create-card');
+      }
+    });
+  }
+}, [dispatch, searchParams]);
 
-  // Функция для сохранения текущего состояния canvas перед переключением слайда
+  
   const saveCurrentSlideCanvas = (): void => {
     if (!cardEditorRef.current) return;
     const { getCanvasData } = cardEditorRef.current;
@@ -164,7 +164,7 @@ export default function CreateCard(): React.JSX.Element {
     }
   };
 
-  // Обработчик переключения слайда
+ 
   const handleSlideChange = (newIndex: number): void => {
     if (newIndex === currentSlideIndex) return;
     saveCurrentSlideCanvas();
@@ -248,7 +248,7 @@ export default function CreateCard(): React.JSX.Element {
       }
     }
 
-    // Создаем массив всех слайдов с их данными
+    
     const slidesData = updatedSlides.map((slide, index) => ({
       canvasData: slide.canvasData ?? { fabric: undefined, meta: {} },
       imageId: slide.uploadedImage?.id,
@@ -291,7 +291,7 @@ export default function CreateCard(): React.JSX.Element {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* Заголовок с анимацией */}
+     
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -318,7 +318,7 @@ export default function CreateCard(): React.JSX.Element {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Редактор */}
+      
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -326,7 +326,7 @@ export default function CreateCard(): React.JSX.Element {
           className="lg:col-span-3"
         >
           <Card className="p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-200/50 shadow-xl hover:shadow-2xl transition-all duration-300">
-            {/* Переключатель слайдов */}
+          
             {slideCount > 1 && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -391,7 +391,7 @@ export default function CreateCard(): React.JSX.Element {
             </div>
           </Card>
 
-          {/* Пример карточки */}
+         
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -449,7 +449,7 @@ export default function CreateCard(): React.JSX.Element {
           </motion.div>
         </motion.div>
 
-        {/* Боковая панель */}
+      
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -457,7 +457,7 @@ export default function CreateCard(): React.JSX.Element {
           className="space-y-4"
         >
           <Card className="p-5 bg-white/80 backdrop-blur-sm border-2 border-gray-200/50 shadow-xl">
-            {/* Табы */}
+          
             <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -487,7 +487,7 @@ export default function CreateCard(): React.JSX.Element {
               </motion.button>
             </div>
 
-            {/* Контент табов */}
+          
             <AnimatePresence mode="wait">
               {activeTab === 'settings' && (
                 <motion.div
@@ -781,7 +781,7 @@ export default function CreateCard(): React.JSX.Element {
         </motion.div>
       </div>
 
-      {/* Модальное окно для просмотра картинки */}
+     
       <AnimatePresence>
         {selectedExampleImage && (
           <motion.div
@@ -798,7 +798,7 @@ export default function CreateCard(): React.JSX.Element {
               className="relative max-w-5xl max-h-[90vh] w-full"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Кнопка закрытия */}
+            
               <motion.button
                 whileHover={{ scale: 1.1, rotate: 90 }}
                 whileTap={{ scale: 0.9 }}
@@ -809,7 +809,7 @@ export default function CreateCard(): React.JSX.Element {
                 <X className="h-6 w-6 text-gray-800" />
               </motion.button>
 
-              {/* Изображение */}
+            
               <img
                 src={selectedExampleImage}
                 alt="Пример карточки товара"

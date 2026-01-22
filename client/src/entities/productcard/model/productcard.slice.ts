@@ -21,67 +21,82 @@ const productCardSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch all cards
+     
       .addCase(fetchProductCardsThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchProductCardsThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.cards = action.payload;
-      })
+      .addCase(fetchProductCardsThunk.fulfilled, (state, action) => ({
+        ...state,
+        loading: false,
+        cards: action.payload,
+      } as ProductCardState))
       .addCase(fetchProductCardsThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch product cards';
+        state.error = action.error.message ?? 'Failed to fetch product cards';
       })
-      // Fetch card by id
+    
       .addCase(fetchProductCardByIdThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchProductCardByIdThunk.fulfilled, (state, action) => {
-        state.loading = false;
         const index = state.cards.findIndex((card) => card.id === action.payload.id);
         if (index === -1) {
-          state.cards.push(action.payload);
-        } else {
-          state.cards[index] = action.payload;
+          return {
+            ...state,
+            loading: false,
+            cards: [...state.cards, action.payload],
+          } as ProductCardState;
         }
+        return {
+          ...state,
+          loading: false,
+          cards: state.cards.map((card, i) => (i === index ? action.payload : card)),
+        } as ProductCardState;
       })
       .addCase(fetchProductCardByIdThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch product card';
+        state.error = action.error.message ?? 'Failed to fetch product card';
       })
-      // Create card
+      
       .addCase(createProductCardThunk.pending, (state) => {
         state.creating = true;
         state.error = null;
       })
-      .addCase(createProductCardThunk.fulfilled, (state, action) => {
-        state.creating = false;
-        state.cards.push(action.payload);
-      })
+      .addCase(createProductCardThunk.fulfilled, (state, action) => ({
+        ...state,
+        creating: false,
+        cards: [...state.cards, action.payload],
+      } as ProductCardState))
       .addCase(createProductCardThunk.rejected, (state, action) => {
         state.creating = false;
-        state.error = action.error.message || 'Failed to create product card';
+        state.error = action.error.message ?? 'Failed to create product card';
       })
-      // Update card
+     
       .addCase(updateProductCardThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(updateProductCardThunk.fulfilled, (state, action) => {
-        state.loading = false;
         const index = state.cards.findIndex((card) => card.id === action.payload.id);
         if (index !== -1) {
-          state.cards[index] = action.payload;
+          return {
+            ...state,
+            loading: false,
+            cards: state.cards.map((card, i) => (i === index ? action.payload : card)),
+          } as ProductCardState;
         }
+        return {
+          ...state,
+          loading: false,
+        } as ProductCardState;
       })
       .addCase(updateProductCardThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to update product card';
+        state.error = action.error.message ?? 'Failed to update product card';
       })
-      // Delete card
+     
       .addCase(deleteProductCardThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -92,7 +107,7 @@ const productCardSlice = createSlice({
       })
       .addCase(deleteProductCardThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to delete product card';
+        state.error = action.error.message ?? 'Failed to delete product card';
       });
   },
 });

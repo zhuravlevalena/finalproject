@@ -15,7 +15,7 @@ const imageSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch all images
+    
       .addCase(fetchImagesThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -26,9 +26,9 @@ const imageSlice = createSlice({
       })
       .addCase(fetchImagesThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch images';
+        state.error = action.error.message ?? 'Failed to fetch images';
       })
-      // Fetch image by id
+     
       .addCase(fetchImageByIdThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -44,9 +44,9 @@ const imageSlice = createSlice({
       })
       .addCase(fetchImageByIdThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch image';
+        state.error = action.error.message ?? 'Failed to fetch image';
       })
-      // Upload image
+     
       .addCase(uploadImageThunk.pending, (state) => {
         state.uploading = true;
         state.error = null;
@@ -57,20 +57,20 @@ const imageSlice = createSlice({
       })
       .addCase(uploadImageThunk.rejected, (state, action) => {
         state.uploading = false;
-        state.error = action.error.message || 'Failed to upload image';
+        state.error = action.error.message ?? 'Failed to upload image';
       })
-      // Delete image
+    
       .addCase(deleteImageThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(deleteImageThunk.fulfilled, (state, action) => {
+            .addCase(deleteImageThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.images = state.images.filter((img) => img.id !== action.payload);
       })
       .addCase(deleteImageThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to delete image';
+        state.error = action.error.message ?? 'Failed to delete image';
       });
   },
 });

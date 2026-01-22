@@ -8,11 +8,11 @@ import { useAppDispatch } from '@/shared/lib/hooks';
 import { refreshThunk } from '@/entities/user/model/user.thunk';
 
 export default function VerifyEmail(): React.JSX.Element {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const dispatch = useAppDispatch();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
-  const [token, setToken] = useState<string | null>(null);
+  const [, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     // Используем window.location для получения query параметров из URL
@@ -27,10 +27,11 @@ export default function VerifyEmail(): React.JSX.Element {
 
     setToken(tokenParam);
     // Автоматически отправляем запрос на сервер при загрузке страницы
-    verifyEmail(tokenParam);
+    // eslint-disable-next-line no-use-before-define
+    void verifyEmail(tokenParam);
   }, []);
 
-  const verifyEmail = async (emailToken: string) => {
+  const verifyEmail = async (emailToken: string): Promise<void> => {
     try {
       console.log('Verifying email with token:', emailToken); // Для отладки
       const result = await UserService.verifyEmail(emailToken);
@@ -45,23 +46,28 @@ export default function VerifyEmail(): React.JSX.Element {
       setTimeout(() => {
         setLocation('/');
       }, 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Email verification error:', error); // Для отладки
       setStatus('error');
-      setMessage(
-        error.response?.data?.error || 
-        error.message || 
-        'Не удалось подтвердить email. Токен может быть недействительным или истекшим.'
-      );
+      const errorObj = error as { response?: { data?: { error?: string } }; message?: string };
+      const errorMessage = 
+        errorObj.response?.data?.error ??
+        errorObj.message ??
+        'Не удалось подтвердить email. Токен может быть недействительным или истекшим.';
+      setMessage(errorMessage);
     }
   };
 
-  const handleResend = async () => {
+  const handleResend = async (): Promise<void> => {
     try {
       await UserService.resendVerificationEmail();
       setMessage('Письмо с подтверждением отправлено повторно. Проверьте вашу почту.');
-    } catch (error: any) {
-      setMessage(error.response?.data?.error || 'Не удалось отправить письмо повторно.');
+    } catch (error: unknown) {
+      const errorObj = error as { response?: { data?: { error?: string } } };
+      const errorMessage = 
+        errorObj.response?.data?.error ??
+        'Не удалось отправить письмо повторно.';
+      setMessage(errorMessage);
     }
   };
 

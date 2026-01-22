@@ -38,7 +38,7 @@ export const updateProductCardThunk = createAsyncThunk(
 
 export const deleteProductCardThunk = createAsyncThunk(
   'productCard/delete',
-  async (id: number): Promise<void> => {
+  async (id: number): Promise<number> => {
     await productCardService.delete(id);
     return id;
   },

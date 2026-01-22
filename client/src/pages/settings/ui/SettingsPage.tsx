@@ -19,8 +19,8 @@ export default function SettingsPage(): React.JSX.Element {
 
   useEffect(() => {
     if (!user) return;
-    setName(user.name ?? '');
-    setEmail(user.email ?? '');
+    setName(user.name);
+    setEmail(user.email);
     setBirthDate(user.birthDate ?? '');
     setGender(user.gender ?? '');
     setPhone(user.phone ?? '');
@@ -50,7 +50,7 @@ export default function SettingsPage(): React.JSX.Element {
         const payload = action.payload as { error?: string } | null | undefined;
         const message =
           payload?.error ??
-          (action.error.message ? action.error.message : 'Не удалось обновить профиль');
+          action.error.message ?? 'Не удалось обновить профиль'
         setError(message);
       }
     } catch (updateError) {
@@ -71,12 +71,12 @@ export default function SettingsPage(): React.JSX.Element {
     );
   }
 
-  const userInitial = (user.name ?? user.email ?? 'U').charAt(0).toUpperCase();
+ const userInitial = (user.name || user.email || 'U').charAt(0).toUpperCase();
 
   return (
     <div className="container mx-auto px-4 py-10 max-w-2xl">
       <Card className="p-6 sm:p-8 space-y-6">
-        {/* Шапка профиля */}
+        
         <div className="flex items-center gap-4 pb-4 border-b border-border">
           <div className="h-16 w-16 rounded-full bg-gradient-to-tr from-sky-500 to-emerald-500 flex items-center justify-center text-2xl font-semibold text-white shadow-lg">
             {userInitial}
@@ -104,7 +104,7 @@ export default function SettingsPage(): React.JSX.Element {
           <label className="text-sm font-medium">Дата рождения</label>
           <input
             type="date"
-            value={birthDate ?? ''}
+            value={birthDate}
             onChange={(event) => setBirthDate(event.target.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
           />
@@ -113,7 +113,7 @@ export default function SettingsPage(): React.JSX.Element {
         <div className="space-y-2">
           <label className="text-sm font-medium">Пол</label>
           <select
-            value={gender ?? ''}
+            value={gender}
             onChange={(event) => setGender(event.target.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
           >
@@ -128,7 +128,7 @@ export default function SettingsPage(): React.JSX.Element {
           <label className="text-sm font-medium">Номер телефона</label>
           <input
             type="tel"
-            value={phone ?? ''}
+            value={phone}
             onChange={(event) => setPhone(event.target.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/50"
             placeholder="+7 ..."

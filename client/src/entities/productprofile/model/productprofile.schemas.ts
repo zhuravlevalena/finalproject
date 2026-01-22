@@ -6,8 +6,8 @@ export const productProfileSchema = z.object({
   productType: z.string().optional(),
   style: z.string().optional(),
   targetAudience: z.string().optional(),
-  colorPalette: z.record(z.unknown()).optional(),
-  preferences: z.record(z.unknown()).optional(),
+  colorPalette: z.record(z.string(), z.unknown()).optional(),
+  preferences: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -16,8 +16,8 @@ export const createProductProfileSchema = z.object({
   productType: z.string().min(1, 'Тип товара обязателен'),
   style: z.string().optional(),
   targetAudience: z.string().optional(),
-  colorPalette: z.record(z.unknown()).optional(),
-  preferences: z.record(z.unknown()).optional(),
+  colorPalette: z.record(z.string(), z.unknown()).optional(),
+  preferences: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const updateProductProfileSchema = createProductProfileSchema.partial();

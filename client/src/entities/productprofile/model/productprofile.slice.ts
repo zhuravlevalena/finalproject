@@ -20,7 +20,7 @@ const productProfileSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch all profiles
+     
       .addCase(fetchProductProfilesThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -31,9 +31,9 @@ const productProfileSlice = createSlice({
       })
       .addCase(fetchProductProfilesThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch product profiles';
+        state.error = action.error.message ?? 'Failed to fetch product profiles';
       })
-      // Fetch profile by id
+      
       .addCase(fetchProductProfileByIdThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -49,9 +49,9 @@ const productProfileSlice = createSlice({
       })
       .addCase(fetchProductProfileByIdThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch product profile';
+        state.error = action.error.message ?? 'Failed to fetch product profile';
       })
-      // Get or create profile
+      
       .addCase(getOrCreateProductProfileThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -67,9 +67,9 @@ const productProfileSlice = createSlice({
       })
       .addCase(getOrCreateProductProfileThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to get or create product profile';
+        state.error = action.error.message ?? 'Failed to get or create product profile';
       })
-      // Update profile
+     
       .addCase(updateProductProfileThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -83,9 +83,9 @@ const productProfileSlice = createSlice({
       })
       .addCase(updateProductProfileThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to update product profile';
+        state.error = action.error.message ?? 'Failed to update product profile';
       })
-      // Delete profile
+     
       .addCase(deleteProductProfileThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -96,7 +96,7 @@ const productProfileSlice = createSlice({
       })
       .addCase(deleteProductProfileThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to delete product profile';
+        state.error = action.error.message ?? 'Failed to delete product profile';
       });
   },
 });

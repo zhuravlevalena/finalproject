@@ -44,32 +44,44 @@ export default function TemplatesPage(): React.JSX.Element {
     const renderPreviews = async (): Promise<void> => {
       const previews = new Map<number, string>();
 
-      console.log(`[TemplatesPage] Starting to render previews for ${layouts.length} layouts`);
+      console.log(
+        `[TemplatesPage] Starting to render previews for ${layouts.length.toString()} layouts`,
+      );
 
       for (const layout of layouts) {
         // Рендерим превью из canvasData для всех макетов, у которых есть canvasData
         if (!layout.canvasData) {
-          console.log(`[TemplatesPage] Skipping layout ${layout.id} (${layout.name}) - no canvasData`);
+          console.log(
+            `[TemplatesPage] Skipping layout ${layout.id.toString()} (${layout.name}) - no canvasData`,
+          );
+          // eslint-disable-next-line no-continue
           continue;
         }
 
-        console.log(`[TemplatesPage] Rendering preview for layout ${layout.id} (${layout.name})`);
+        console.log(
+          `[TemplatesPage] Rendering preview for layout ${layout.id.toString()} (${layout.name})`,
+        );
 
         try {
           // Парсим canvasData
           let canvasData: { version?: string; objects?: unknown[] } | null = null;
           if (typeof layout.canvasData === 'string') {
-            canvasData = JSON.parse(layout.canvasData);
+            canvasData = JSON.parse(layout.canvasData) as { version?: string; objects?: unknown[] };
           } else if (typeof layout.canvasData === 'object') {
             canvasData = layout.canvasData as { version?: string; objects?: unknown[] };
           }
 
-          if (!canvasData || !canvasData.objects || !Array.isArray(canvasData.objects)) {
-            console.warn(`[TemplatesPage] Layout ${layout.id} has invalid canvasData structure`);
+          if (!Array.isArray(canvasData?.objects)) {
+            console.warn(
+              `[TemplatesPage] Layout ${layout.id.toString()} has invalid canvasData structure`,
+            );
+            // eslint-disable-next-line no-continue
             continue;
           }
 
-          console.log(`[TemplatesPage] Layout ${layout.id} has ${canvasData.objects.length} objects`);
+          console.log(
+            `[TemplatesPage] Layout ${layout.id.toString()} has ${canvasData.objects.length.toString()} objects`,
+          );
 
           // Преобразуем пути к изображениям в полные URL и добавляем crossOrigin для CORS
           const processedObjects = canvasData.objects.map((obj: unknown) => {
@@ -98,8 +110,10 @@ export default function TemplatesPage(): React.JSX.Element {
           canvas.height = 1200;
 
           // Проверяем, что canvas создан правильно
-          if (!canvas || !canvas.getContext) {
-            console.warn(`Could not create canvas for layout ${layout.id}`);
+          const context = canvas.getContext('2d');
+          if (!context) {
+            console.warn(`Could not create canvas for layout ${layout.id.toString()}`);
+            // eslint-disable-next-line no-continue
             continue;
           }
 
@@ -110,12 +124,11 @@ export default function TemplatesPage(): React.JSX.Element {
           });
 
           // Проверяем, что fabricCanvas создан правильно
-          if (!fabricCanvas?.getElement?.()) {
-            console.warn(`Could not create fabric canvas for layout ${layout.id}`);
-            continue;
-          }
+          // const canvasElement = fabricCanvas.getElement();
+
 
           // Используем fabric.util.enlivenObjects для правильной загрузки изображений
+          // eslint-disable-next-line no-await-in-loop
           await new Promise<void>((resolve) => {
             fabric.util.enlivenObjects(
               processedCanvasData.objects,
@@ -128,9 +141,7 @@ export default function TemplatesPage(): React.JSX.Element {
                     if (obj.type === 'image') {
                       const img = obj as fabric.Image;
                       const element = img.getElement();
-                      if (element) {
-                        element.crossOrigin = 'anonymous';
-                      }
+                      element.crossOrigin = 'anonymous';
                     }
                     fabricCanvas.add(obj);
                   });
@@ -138,42 +149,37 @@ export default function TemplatesPage(): React.JSX.Element {
 
                   // Ждем загрузки всех изображений
                   const images = fabricCanvas.getObjects('image') as fabric.Image[];
-                  
+
                   if (images.length > 0) {
                     await Promise.all(
                       images.map(
                         (img) =>
                           new Promise<void>((imgResolve) => {
                             const element = img.getElement();
-                            if (element) {
-                              // Устанавливаем crossOrigin для избежания SecurityError
-                              if (!element.crossOrigin) {
-                                element.crossOrigin = 'anonymous';
-                              }
-                              const imgEl = element instanceof HTMLImageElement ? element : null;
-                              if (imgEl?.complete && imgEl.naturalWidth > 0) {
+                            // Устанавливаем crossOrigin для избежания SecurityError
+                            element.crossOrigin ??= 'anonymous';
+                            const imgEl = element instanceof HTMLImageElement ? element : null;
+                            if (imgEl?.complete && imgEl.naturalWidth > 0) {
+                              imgResolve();
+                            } else if (imgEl) {
+                              const onLoad = (): void => {
+                                imgEl.removeEventListener('load', onLoad);
+                                // eslint-disable-next-line no-use-before-define
+                                imgEl.removeEventListener('error', onError);
                                 imgResolve();
-                              } else if (imgEl) {
-                                const onLoad = (): void => {
-                                  imgEl.removeEventListener('load', onLoad);
-                                  imgEl.removeEventListener('error', onError);
-                                  imgResolve();
-                                };
-                                const onError = (): void => {
-                                  imgEl.removeEventListener('load', onLoad);
-                                  imgEl.removeEventListener('error', onError);
-                                  imgResolve();
-                                };
-                                imgEl.addEventListener('load', onLoad);
-                                imgEl.addEventListener('error', onError);
-                                setTimeout(() => {
-                                  imgEl.removeEventListener('load', onLoad);
-                                  imgEl.removeEventListener('error', onError);
-                                  imgResolve();
-                                }, 5000);
-                              } else {
+                              };
+                              const onError = (): void => {
+                                imgEl.removeEventListener('load', onLoad);
+                                imgEl.removeEventListener('error', onError);
                                 imgResolve();
-                              }
+                              };
+                              imgEl.addEventListener('load', onLoad);
+                              imgEl.addEventListener('error', onError);
+                              setTimeout(() => {
+                                imgEl.removeEventListener('load', onLoad);
+                                imgEl.removeEventListener('error', onError);
+                                imgResolve();
+                              }, 5000);
                             } else {
                               imgResolve();
                             }
@@ -182,29 +188,27 @@ export default function TemplatesPage(): React.JSX.Element {
                     );
                   }
 
-                  // Проверяем, что canvas все еще валиден перед рендерингом
-                  if (fabricCanvas.getElement?.() && fabricCanvas.getContext()) {
-                    fabricCanvas.renderAll();
-                    
-                    // Конвертируем в data URL
-                    const dataURL = fabricCanvas.toDataURL({
-                      format: 'png',
-                      quality: 0.8,
-                      multiplier: 0.3,
-                    });
-                    
-                    previews.set(layout.id, dataURL);
-                    console.log(`[TemplatesPage] Successfully rendered preview for layout ${layout.id} (${layout.name})`);
-                  } else {
-                    console.warn(`[TemplatesPage] Canvas invalid for layout ${layout.id} before rendering`);
-                  }
-                } catch (renderErr) {
-                  console.warn(`Error rendering layout ${layout.id}:`, renderErr);
+                  // Рендерим canvas
+                  fabricCanvas.renderAll();
+
+                  // Конвертируем в data URL
+                  const dataURL = fabricCanvas.toDataURL({
+                    format: 'png',
+                    quality: 0.8,
+                    multiplier: 0.3,
+                  });
+
+                  previews.set(layout.id, dataURL);
+                  console.log(
+                    `[TemplatesPage] Successfully rendered preview for layout ${layout.id.toString()} (${layout.name})`,
+                  );
+                } catch (renderErr: unknown) {
+                  console.warn(`Error rendering layout ${layout.id.toString()}:`, renderErr);
                 } finally {
                   // Безопасная очистка offscreen canvas
                   try {
                     fabricCanvas.clear();
-                  } catch (cleanupErr) {
+                  } catch {
                     // Игнорируем ошибки очистки
                   }
                   resolve();
@@ -213,15 +217,15 @@ export default function TemplatesPage(): React.JSX.Element {
               'fabric',
             );
           });
-        } catch (err) {
-          console.warn(`Could not render preview for layout ${layout.id}:`, err);
+        } catch (err: unknown) {
+          console.warn(`Could not render preview for layout ${layout.id.toString()}:`, err);
         }
       }
 
       setLayoutPreviews(previews);
       setPreviewsRendered(true);
       console.log(
-        `[TemplatesPage] Finished rendering previews. Generated ${previews.size} previews`,
+        `[TemplatesPage] Finished rendering previews. Generated ${previews.size.toString()} previews`,
       );
     };
 
@@ -232,7 +236,7 @@ export default function TemplatesPage(): React.JSX.Element {
   }, [layouts]);
 
   const handleLayoutSelect = (layoutId: number): void => {
-    setLocation(`/layout-editor/${layoutId}`);
+    setLocation(`/layout-editor/${layoutId.toString()}`);
   };
 
   if (loading) {
@@ -298,7 +302,7 @@ export default function TemplatesPage(): React.JSX.Element {
                 {/* 1. Если есть успешное превью из canvasData – показываем его */}
                 {layoutPreviews.has(layout.id) && (
                   <img
-                    src={layoutPreviews.get(layout.id)!}
+                    src={layoutPreviews.get(layout.id) ?? ''}
                     alt={layout.name}
                     className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform"
                   />
