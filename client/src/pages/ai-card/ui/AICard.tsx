@@ -16,40 +16,39 @@ export default function AICard(): React.JSX.Element {
 
   const { response, loading, error } = useAppSelector((state) => state.ai);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (): Promise<void> => {
     if (!prompt.trim()) {
       return;
     }
 
     dispatch(clearResponse());
     const resultAction = await dispatch(askAIThunk(prompt));
-    // Логируем ответ для отладки, чтобы видеть, что именно приходит (URL или текст)
+
     if (askAIThunk.fulfilled.match(resultAction)) {
-      // eslint-disable-next-line no-console
       console.log('AI response:', resultAction.payload);
     } else {
-      // eslint-disable-next-line no-console
       console.error('AI error:', resultAction.error);
     }
   };
 
-  const handleDelete = async () => {
-    if (!response?.image?.id) return;
-    
+  const handleDelete = async (): Promise<void> => {
+    if (!response?.image.id) return;
+
     try {
       await dispatch(deleteImageThunk(response.image.id));
       dispatch(clearResponse());
+      // eslint-disable-next-line no-shadow
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error('Ошибка при удалении изображения:', error);
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = (): void => {
     if (!response?.image) return;
-    
-    // Переходим в CreateCard и передаем изображение через URL параметры
-    setLocation(`/create-card?imageId=${response.image.id}&imageUrl=${encodeURIComponent(response.image.url)}`);
+
+    setLocation(
+      `/create-card?imageId=${String(response.image.id)}&imageUrl=${encodeURIComponent(response.image.url)}`,
+    );
   };
 
   return (
@@ -62,7 +61,6 @@ export default function AICard(): React.JSX.Element {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Левая боковая панель с картинкой */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -86,7 +84,6 @@ export default function AICard(): React.JSX.Element {
           </Card>
         </motion.div>
 
-        {/* Правая основная область с формой и результатом */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -136,18 +133,18 @@ export default function AICard(): React.JSX.Element {
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
                   <h3 className="text-sm font-medium text-green-800 mb-2">Результат:</h3>
                   {(() => {
-                    const imageUrl = response.response || response.image?.url || '';
+                  const imageUrl = response.response || response.image.url || '';
+                    const imageExtensionRegex = /\.(png|jpg|jpeg|gif|webp)$/i;
                     const isImageUrl =
                       typeof imageUrl === 'string' &&
                       !!imageUrl &&
                       (imageUrl.startsWith('/img/') ||
                         imageUrl.includes('/img/') ||
-                        imageUrl.match(/\.(png|jpg|jpeg|gif|webp)$/i));
+                        !!imageExtensionRegex.exec(imageUrl));
 
-                    // eslint-disable-next-line no-console
                     console.log('AI response imageUrl:', imageUrl, 'Is image URL:', isImageUrl);
 
-                    if (isImageUrl && response.image) {
+                   if (isImageUrl) {
                       return (
                         <div className="flex flex-col items-center gap-3">
                           <img
@@ -155,7 +152,6 @@ export default function AICard(): React.JSX.Element {
                             alt="Сгенерированное изображение"
                             className="max-w-full max-h-96 w-auto rounded shadow-md bg-white border border-gray-200"
                             onError={(e) => {
-                              // eslint-disable-next-line no-console
                               console.error('Ошибка загрузки изображения по URL:', imageUrl);
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';

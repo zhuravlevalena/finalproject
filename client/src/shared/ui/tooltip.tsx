@@ -1,10 +1,10 @@
 import React from 'react';
 
-interface TooltipProviderProps {
+type TooltipProviderProps = {
   children: React.ReactNode;
-}
+};
 
-export function TooltipProvider({ children }: TooltipProviderProps) {
+export function TooltipProvider({ children }: TooltipProviderProps): React.JSX.Element {
   return <>{children}</>;
 }
 

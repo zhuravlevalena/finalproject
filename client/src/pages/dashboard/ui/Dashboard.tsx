@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'wouter';
 import { useAppSelector, useAppDispatch } from '@/shared/lib/hooks';
@@ -7,7 +8,7 @@ import { Button } from '@/shared/ui/button';
 import { Plus, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fabric } from 'fabric';
 
-// Компонент для отображения карточки со слайдами
+
 function CardSlideViewer({
   card,
   slides,
@@ -34,12 +35,12 @@ function CardSlideViewer({
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [slideImages, setSlideImages] = useState<Map<number, string>>(new Map());
 
-  // Функция для рендеринга слайда в изображение
+ 
   const renderSlideToImage = useCallback(
     async (index: number): Promise<string | null> => {
       const slide = slides[index];
 
-      // Если это первый слайд и есть generatedImage, используем его
+    
       if (index === 0 && card.generatedImage?.url) {
         const url = card.generatedImage.url.startsWith('http')
           ? card.generatedImage.url
@@ -47,13 +48,13 @@ function CardSlideViewer({
         return url;
       }
 
-      // Если нет данных canvas для этого слайда, возвращаем null
+    
       if (!slide.canvasData?.fabric) {
         return null;
       }
 
       try {
-        // Создаем временный canvas
+       
         const [width, height] = cardSize.split('x').map(Number);
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -65,7 +66,7 @@ function CardSlideViewer({
           backgroundColor: '#ffffff',
         });
 
-        // Загружаем данные из fabric JSON
+      
         await new Promise<void>((resolve, reject) => {
           fabricCanvas.loadFromJSON(
             slide.canvasData!.fabric!,
@@ -77,13 +78,13 @@ function CardSlideViewer({
           );
         });
 
-        // Конвертируем в data URL
+      
         const dataURL = fabricCanvas.toDataURL({
           format: 'png',
           quality: 1,
         });
 
-        // Очищаем canvas
+       
         fabricCanvas.dispose();
 
         return dataURL;
@@ -95,7 +96,7 @@ function CardSlideViewer({
     [slides, card.generatedImage?.url, cardSize],
   );
 
-  // Загружаем изображения для всех слайдов при монтировании
+ 
   useEffect(() => {
     const loadAllSlides = async (): Promise<void> => {
       const tasks: Promise<[number, string | null]>[] = [];
@@ -124,7 +125,7 @@ function CardSlideViewer({
     void loadAllSlides();
   }, [slideCount, renderSlideToImage, slideImages]);
 
-  // Получаем изображение текущего слайда
+  
   const getCurrentSlideImage = (): string | null => slideImages.get(currentSlideIndex) ?? null;
 
   const hasMultipleSlides = slideCount > 1;
@@ -134,7 +135,7 @@ function CardSlideViewer({
     <div className="relative">
       <Link href={`/edit-card/${String(card.id)}`}>
         <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-          {/* Показываем слайды */}
+       
           {hasMultipleSlides ? (
             <div className="relative">
               {currentImage ? (
@@ -153,7 +154,7 @@ function CardSlideViewer({
                       }
                     }}
                   />
-                  {/* Навигация по слайдам */}
+                
                   <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2 items-center bg-black/50 rounded-full px-3 py-1.5 z-10">
                     <button
                       onClick={(e) => {
@@ -181,7 +182,7 @@ function CardSlideViewer({
                       <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
-                  {/* Индикаторы слайдов */}
+                 
                   <div className="absolute top-2 left-2 flex gap-1 z-10">
                     {Array.from({ length: slideCount }).map((_, index) => (
                       <div
@@ -193,7 +194,7 @@ function CardSlideViewer({
                       />
                     ))}
                   </div>
-                  {/* Статус */}
+                 
                   <div className="absolute top-2 right-2 flex gap-2 z-10">
                     <span
                       className={`px-2 py-1 rounded text-xs ${
@@ -215,7 +216,7 @@ function CardSlideViewer({
               )}
             </div>
           ) : (
-            // Один слайд - обычное отображение
+           
             <>
               {currentImage ? (
                 <div className="relative">
@@ -260,7 +261,7 @@ function CardSlideViewer({
             </p>
             {hasMultipleSlides && (
               <p className="text-xs text-blue-600 mb-2">
-                {slideCount} {slideCount === 1 ? 'слайд' : slideCount < 5 ? 'слайда' : 'слайдов'}
+               {slideCount} {slideCount === 1 ? 'слайд' : slideCount >= 2 && slideCount < 5 ? 'слайда' : 'слайдов'}
               </p>
             )}
             <div className="flex justify-between items-center">
@@ -312,80 +313,97 @@ export default function Dashboard(): React.JSX.Element {
   const draftCount = cards.filter((c) => c.status !== 'completed').length;
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6">
-      {/* Верхняя панель со статистикой */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Мои карточки</h1>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+  <div className="container mx-auto px-4 py-8 space-y-6">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 className="text-3xl font-bold mb-2">Мои карточки</h1>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span>
+            Всего: <span className="font-semibold text-foreground">{cards.length}</span>
+          </span>
+          {completedCount > 0 && (
             <span>
-              Всего: <span className="font-semibold text-foreground">{cards.length}</span>
+              Завершено: <span className="font-semibold text-emerald-600">{completedCount}</span>
             </span>
-            {completedCount > 0 && (
-              <span>
-                Завершено: <span className="font-semibold text-emerald-600">{completedCount}</span>
-              </span>
-            )}
-            {draftCount > 0 && (
-              <span>
-                Черновики: <span className="font-semibold text-amber-600">{draftCount}</span>
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="sm:shrink-0">
-          <Link href="/create-card">
-            <Button className="w-full sm:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              Создать карточку
-            </Button>
-          </Link>
+          )}
+          {draftCount > 0 && (
+            <span>
+              Черновики: <span className="font-semibold text-amber-600">{draftCount}</span>
+            </span>
+          )}
         </div>
       </div>
-
-      {cards.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">У вас пока нет карточек</p>
-          <Link href="/create-card">
-            <Button>Создать первую карточку</Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cards.map((card) => {
-            // Извлекаем данные о слайдах из canvasData.meta
-            const canvasData = card.canvasData as
-              | {
-                  meta?: {
-                    slides?: {
-                      canvasData?: {
-                        fabric?: Record<string, unknown>;
-                        meta?: Record<string, unknown>;
-                      };
-                    }[];
-                    slideCount?: number;
-                    cardSize?: string;
-                  };
-                }
-              | null
-              | undefined;
-            const meta = canvasData?.meta;
-            const slides = meta?.slides ?? [];
-            const slideCount = meta?.slideCount ?? 1;
-            const cardSize = meta?.cardSize ?? '1024x768';
-
-            return (
-              <CardSlideViewer
-                key={card.id}
-                card={card}
-                slides={slides}
-                slideCount={slideCount}
-                cardSize={cardSize}
-              />
-            );
-          })}
-        </div>
-      )}
+      <div className="sm:shrink-0">
+        <Link href="/create-card">
+          <Button className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Создать карточку
+          </Button>
+        </Link>
+      </div>
     </div>
-  );
+
+    {cards.length === 0 ? (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground mb-4">У вас пока нет карточек</p>
+        <Link href="/create-card">
+          <Button>Создать первую карточку</Button>
+        </Link>
+      </div>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cards.map((card) => {
+          const canvasData = card.canvasData as
+            | {
+                meta?: {
+                  slides?: {
+                    canvasData?: {
+                      fabric?: Record<string, unknown>;
+                      meta?: Record<string, unknown>;
+                    };
+                  }[];
+                  slideCount?: number;
+                  cardSize?: string;
+                };
+              }
+            | null
+            | undefined;
+          const meta = canvasData?.meta;
+          const slides = meta?.slides ?? [];
+          const slideCount = meta?.slideCount ?? 1;
+          const cardSize = meta?.cardSize ?? '1024x768';
+
+         
+          const transformedCard = {
+            id: card.id,
+            title: card.title,
+            status: card.status,
+            createdAt: card.createdAt,
+            marketplace: card.marketplace ? { name: card.marketplace.name } : undefined,
+            generatedImage: card.generatedImage
+              ? {
+                  url:
+                    typeof card.generatedImage === 'object' &&
+                    'url' in card.generatedImage &&
+                    typeof card.generatedImage.url === 'string'
+                      ? card.generatedImage.url
+                      : undefined,
+                }
+              : undefined,
+          };
+
+          return (
+            <CardSlideViewer
+              key={card.id}
+              card={transformedCard}
+              slides={slides}
+              slideCount={slideCount}
+              cardSize={cardSize}
+            />
+          );
+        })}
+      </div>
+    )}
+  </div>
+);
 }

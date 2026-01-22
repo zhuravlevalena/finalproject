@@ -8,7 +8,7 @@ export const productCardService = {
   },
 
   getById: async (id: number): Promise<ProductCard> => {
-    const response = await axiosInstance.get<ProductCard>(`/product-cards/${id}`);
+    const response = await axiosInstance.get<ProductCard>(`/product-cards/${id.toString()}`);
     return response.data;
   },
 
@@ -19,12 +19,15 @@ export const productCardService = {
 
       Object.keys(data).forEach((key) => {
         const value = data[key as keyof CreateProductCardDto];
-        if (value !== undefined && value !== null) {
+        if (value !== undefined) {
           if (key === 'canvasData' && typeof value === 'object') {
-            // Сохраняем как JSON строку
+           
             formData.append(key, JSON.stringify(value));
-          } else {
+          } else if (typeof value === 'string' || typeof value === 'number') {
             formData.append(key, String(value));
+          } else if (typeof value === 'object') {
+            
+            formData.append(key, JSON.stringify(value));
           }
         }
       });
@@ -51,27 +54,30 @@ export const productCardService = {
 
       Object.keys(data).forEach((key) => {
         const value = data[key as keyof CreateProductCardDto];
-        if (value !== undefined && value !== null) {
+        if (value !== undefined) {
           if (key === 'canvasData' && typeof value === 'object') {
             formData.append(key, JSON.stringify(value));
-          } else {
+          } else if (typeof value === 'string' || typeof value === 'number') {
             formData.append(key, String(value));
+          } else if (typeof value === 'object') {
+           
+            formData.append(key, JSON.stringify(value));
           }
         }
       });
 
-      const response = await axiosInstance.put<ProductCard>(`/product-cards/${id}`, formData, {
+      const response = await axiosInstance.put<ProductCard>(`/product-cards/${id.toString()}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       return response.data;
     }
-    const response = await axiosInstance.put<ProductCard>(`/product-cards/${id}`, data);
+    const response = await axiosInstance.put<ProductCard>(`/product-cards/${id.toString()}`, data);
     return response.data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await axiosInstance.delete(`/product-cards/${id}`);
+    await axiosInstance.delete(`/product-cards/${id.toString()}`);
   },
 };

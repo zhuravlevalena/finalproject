@@ -4,28 +4,22 @@ import type { Image } from './image.types';
 
 export const fetchImagesThunk = createAsyncThunk(
   'image/fetchAll',
-  async (): Promise<Image[]> => {
-    return imageService.getAll();
-  }
+  async (): Promise<Image[]> => imageService.getAll()
 );
 
 export const fetchImageByIdThunk = createAsyncThunk(
   'image/fetchById',
-  async (id: number): Promise<Image> => {
-    return imageService.getById(id);
-  }
+  async (id: number): Promise<Image> => imageService.getById(id)
 );
 
 export const uploadImageThunk = createAsyncThunk(
   'image/upload',
-  async (file: File): Promise<Image> => {
-    return imageService.upload(file);
-  }
+  async (file: File): Promise<Image> => imageService.upload(file)
 );
 
 export const deleteImageThunk = createAsyncThunk(
   'image/delete',
-  async (id: number): Promise<void> => {
+  async (id: number): Promise<number> => {
     await imageService.delete(id);
     return id;
   }

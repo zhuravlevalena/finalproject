@@ -14,7 +14,7 @@ const templateSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch all templates
+      
       .addCase(fetchTemplatesThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -25,9 +25,9 @@ const templateSlice = createSlice({
       })
       .addCase(fetchTemplatesThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch templates';
+        state.error = action.error.message ?? 'Failed to fetch templates';
       })
-      // Fetch template by id
+      
       .addCase(fetchTemplateByIdThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -43,7 +43,7 @@ const templateSlice = createSlice({
       })
       .addCase(fetchTemplateByIdThunk.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch template';
+        state.error = action.error.message ?? 'Failed to fetch template';
       });
   },
 });

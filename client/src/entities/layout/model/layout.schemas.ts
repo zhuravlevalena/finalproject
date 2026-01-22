@@ -7,7 +7,7 @@ export const layoutSchema = z.object({
   description: z.string().optional(),
   templateId: z.number(),
   template: templateSchema.optional(),
-  canvasData: z.record(z.unknown()).optional(),
+  canvasData: z.record(z.string(), z.unknown()).optional(),
   preview: z.string().optional(),
   isDefault: z.boolean(),
   createdAt: z.string(),
@@ -18,7 +18,7 @@ export const createLayoutSchema = z.object({
   name: z.string().min(1, 'Название обязательно'),
   description: z.string().optional(),
   templateId: z.number(),
-  canvasData: z.record(z.unknown()).optional(),
+  canvasData: z.record(z.string(), z.unknown()).optional(),
   preview: z.string().optional(),
   isDefault: z.boolean().default(false),
 });

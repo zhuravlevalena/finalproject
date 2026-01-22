@@ -12,7 +12,7 @@ export default function TemplateEditorPage(): React.JSX.Element {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    // Инициализация Fabric.js canvas
+   
     const canvas = new fabric.Canvas(canvasRef.current, {
       width: 800,
       height: 800,
@@ -21,7 +21,8 @@ export default function TemplateEditorPage(): React.JSX.Element {
 
     fabricCanvasRef.current = canvas;
 
-    // Загрузка шаблона (пока моковые данные)
+    
+    // eslint-disable-next-line no-use-before-define
     loadTemplate(canvas, params?.id ?? '1');
 
     // Обработчик выбора объекта
@@ -37,12 +38,13 @@ export default function TemplateEditorPage(): React.JSX.Element {
       setSelectedObject(null);
     });
 
+    // eslint-disable-next-line consistent-return
     return () => {
       canvas.dispose();
     };
   }, [params?.id]);
 
-  const loadTemplate = (canvas: fabric.Canvas, templateId: string): void => {
+  const loadTemplate = (canvas: fabric.Canvas): void => {
     // Моковый шаблон с несколькими слоями
 
     // Фоновый прямоугольник

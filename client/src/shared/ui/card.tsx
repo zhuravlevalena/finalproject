@@ -1,11 +1,15 @@
 import React from 'react';
 import { cn } from '@/shared/lib/utils';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+type CardProps = React.HTMLAttributes<HTMLDivElement> & {
   children: React.ReactNode;
-}
+};
 
-export function Card({ className, children, ...props }: CardProps) {
+type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
+  children: React.ReactNode;
+};
+
+export function Card({ className, children, ...props }: CardProps): React.JSX.Element {
   return (
     <div
       className={cn('rounded-lg border border-border bg-card text-card-foreground shadow-sm', className)}
@@ -16,7 +20,7 @@ export function Card({ className, children, ...props }: CardProps) {
   );
 }
 
-export function CardHeader({ className, children, ...props }: CardProps) {
+export function CardHeader({ className, children, ...props }: CardProps): React.JSX.Element {
   return (
     <div className={cn('flex flex-col space-y-1.5 p-6', className)} {...props}>
       {children}
@@ -24,7 +28,7 @@ export function CardHeader({ className, children, ...props }: CardProps) {
   );
 }
 
-export function CardTitle({ className, children, ...props }: CardProps) {
+export function CardTitle({ className, children, ...props }: CardTitleProps): React.JSX.Element {
   return (
     <h3 className={cn('text-2xl font-semibold leading-none tracking-tight', className)} {...props}>
       {children}
@@ -32,7 +36,7 @@ export function CardTitle({ className, children, ...props }: CardProps) {
   );
 }
 
-export function CardContent({ className, children, ...props }: CardProps) {
+export function CardContent({ className, children, ...props }: CardProps): React.JSX.Element {
   return (
     <div className={cn('p-6 pt-0', className)} {...props}>
       {children}

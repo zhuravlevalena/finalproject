@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Базовые схемы для вложенных объектов (избегаем циклических зависимостей)
 const marketplaceRefSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -15,7 +14,7 @@ const templateRefSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   marketplaceId: z.number().optional(),
-  canvasData: z.record(z.unknown()).optional(),
+  canvasData: z.record(z.string(), z.unknown()).optional(),
   preview: z.string().optional(),
   isDefault: z.boolean(),
   createdAt: z.string(),
@@ -29,7 +28,7 @@ const imageRefSchema = z.object({
   type: z.enum(['uploaded', 'generated']),
   originalName: z.string().optional(),
   prompt: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -40,8 +39,8 @@ const productProfileRefSchema = z.object({
   productType: z.string().optional(),
   style: z.string().optional(),
   targetAudience: z.string().optional(),
-  colorPalette: z.record(z.unknown()).optional(),
-  preferences: z.record(z.unknown()).optional(),
+  colorPalette: z.record(z.string(), z.unknown()).optional(),
+  preferences: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -59,7 +58,7 @@ export const productCardSchema = z.object({
   productProfile: productProfileRefSchema.optional(),
   title: z.string().optional(),
   description: z.string().optional(),
-  canvasData: z.record(z.unknown()).optional(),
+  canvasData: z.record(z.string(), z.unknown()).optional(),
   imageId: z.number().optional(),
   image: imageRefSchema.optional(),
   generatedImageId: z.number().optional(),
@@ -75,7 +74,7 @@ export const createProductCardSchema = z.object({
   productProfileId: z.number().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
-  canvasData: z.record(z.unknown()).optional(),
+  canvasData: z.record(z.string(), z.unknown()).optional(),
   imageId: z.number().optional(),
   generatedImageId: z.number().optional(),
   status: cardStatusSchema.optional().default('draft'),

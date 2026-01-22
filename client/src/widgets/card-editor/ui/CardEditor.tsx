@@ -1,4 +1,4 @@
-import React, {
+import {
   useEffect,
   useRef,
   useState,
@@ -111,10 +111,10 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       ) {
         const textObj = activeObject as fabric.Textbox | fabric.IText | fabric.Text;
         setTextProps({
-          fontSize: textObj.fontSize || 24,
-          fontFamily: textObj.fontFamily || 'Arial',
-          fill: (textObj.fill as string) || '#000000',
-          textAlign: (textObj.textAlign as 'left' | 'center' | 'right' | 'justify') || 'left',
+          fontSize: textObj.fontSize ?? 24,
+          fontFamily: textObj.fontFamily ?? 'Arial',
+          fill: typeof textObj.fill === 'string' ? textObj.fill : '#000000',
+          textAlign: (typeof textObj.textAlign === 'string' ? textObj.textAlign : 'left') as 'left' | 'center' | 'right' | 'justify',
           fontWeight: textObj.fontWeight === 'bold' ? 'bold' : 'normal',
           fontStyle: textObj.fontStyle === 'italic' ? 'italic' : 'normal',
         });
@@ -140,11 +140,12 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       (texts: { text: string; fontSize?: number; top?: number; left?: number }[]) => {
         if (!fabricCanvasRef.current) return;
 
+        const canvas = fabricCanvasRef.current;
         texts.forEach(({ text, fontSize = 24, top = 50, left = 50 }) => {
           const textbox = new fabric.Textbox(text, {
             left,
             top,
-            width: fabricCanvasRef.current!.getWidth() - left * 2,
+            width: canvas.getWidth() - left * 2, // Ширина с отступами
             fontSize,
             fontFamily: textProps.fontFamily,
             fill: textProps.fill,
@@ -157,7 +158,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             splitByGrapheme: true,
           });
 
-          fabricCanvasRef.current!.add(textbox);
+          canvas.add(textbox);
         });
 
         fabricCanvasRef.current.renderAll();
@@ -211,6 +212,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       });
 
       // Загружаем сохраненные данные, если есть
+<<<<<<< HEAD
       if (card?.canvasData && typeof card.canvasData === 'object' && 'fabric' in card.canvasData) {
         const canvasData = card.canvasData as {
           fabric?: Record<string, unknown>;
@@ -220,6 +222,32 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         if (fabricData) {
           try {
             const sourceSize = canvasData.meta?.cardSize || '900x1200';
+=======
+      if (card?.canvasData) {
+        let fabricData: Record<string, unknown> | null = null;
+        let meta: { cardSize?: string; [key: string]: unknown } | undefined;
+        
+        // Проверяем разные форматы данных
+        if (typeof card.canvasData === 'object' && 'fabric' in card.canvasData) {
+          // Формат: { fabric: {...}, meta: {...} }
+          const canvasData = card.canvasData as {
+            fabric?: Record<string, unknown>;
+            meta?: { cardSize?: string; [key: string]: unknown };
+          };
+          fabricData = canvasData.fabric ?? null;
+          meta = canvasData.meta;
+        } else if (typeof card.canvasData === 'object' && ('version' in card.canvasData || 'objects' in card.canvasData)) {
+          // Формат напрямую из сидера: { version, objects }
+          fabricData = card.canvasData as Record<string, unknown>;
+        }
+        
+        console.log('🔍 Loading canvas data:', { fabricData, cardCanvasData: card.canvasData, hasFabric: !!fabricData });
+        
+        if (fabricData) {
+          try {
+            // Определяем исходный размер макета
+            const sourceSize = meta?.cardSize ?? '900x1200';
+>>>>>>> main
             const [sourceWidth, sourceHeight] = sourceSize.split('x').map(Number);
             const [targetWidth, targetHeight] = cardSize.split('x').map(Number);
 
@@ -228,29 +256,35 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
 
             canvas.loadFromJSON(fabricData, () => {
               if (scaleX !== 1 || scaleY !== 1) {
+                const bgImage = canvas.backgroundImage;
+                const bgVpt = canvas.backgroundVpt;
                 canvas.getObjects().forEach((obj) => {
-                  if (obj === canvas.backgroundImage || obj === canvas.backgroundVpt) {
+                  // Пропускаем фоновые объекты (если они есть и являются объектами)
+                  if (bgImage && typeof bgImage === 'object' && obj === bgImage) {
+                    return;
+                  }
+                  if (bgVpt && typeof bgVpt === 'object' && obj === bgVpt) {
                     return;
                   }
 
                   if (obj.left !== undefined) {
-                    obj.set('left', (obj.left || 0) * scaleX);
+                    obj.set('left', (obj.left ?? 0) * scaleX);
                   }
                   if (obj.top !== undefined) {
-                    obj.set('top', (obj.top || 0) * scaleY);
+                    obj.set('top', (obj.top ?? 0) * scaleY);
                   }
 
                   if (obj.width !== undefined) {
-                    obj.set('width', (obj.width || 0) * scaleX);
+                    obj.set('width', (obj.width ?? 0) * scaleX);
                   }
                   if (obj.height !== undefined) {
-                    obj.set('height', (obj.height || 0) * scaleY);
+                    obj.set('height', (obj.height ?? 0) * scaleY);
                   }
 
                   if (obj.type === 'circle' && 'radius' in obj) {
                     const circle = obj as fabric.Circle;
-                    const avgScale = (scaleX + scaleY) / 2;
-                    circle.set('radius', (circle.radius || 0) * avgScale);
+                    const avgScale = (scaleX + scaleY) / 2; // Для кругов используем средний масштаб
+                    circle.set('radius', (circle.radius ?? 0) * avgScale);
                   }
 
                   if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
@@ -261,7 +295,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                       updates.fontSize = textObj.fontSize * avgScale;
                     }
                     if (textObj.width !== undefined) {
-                      updates.width = (textObj.width || 0) * scaleX;
+                      updates.width = (textObj.width ?? 0) * scaleX;
                     }
                     if (Object.keys(updates).length > 0) {
                       textObj.set(updates);
@@ -295,24 +329,38 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                 });
               }
 
+              // Убеждаемся, что все объекты (кроме фона) редактируемы
+              const bgImage2 = canvas.backgroundImage;
+              const bgVpt2 = canvas.backgroundVpt;
               canvas.getObjects().forEach((obj) => {
-                if (obj === canvas.backgroundImage || obj === canvas.backgroundVpt) {
+                // Пропускаем фоновые объекты (если они есть и являются объектами)
+                if (bgImage2 && typeof bgImage2 === 'object' && obj === bgImage2) {
+                  return;
+                }
+                if (bgVpt2 && typeof bgVpt2 === 'object' && obj === bgVpt2) {
                   return;
                 }
                 obj.set({
                   selectable: true,
                   evented: true,
                 });
+                  // Для текстовых объектов (textbox, text, i-text) включаем редактирование и инициализируем styles
                 if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
                   const textObj = obj as fabric.Textbox | fabric.IText | fabric.Text;
-                  textObj.set('editable', true);
-                  if (!textObj.styles || !Array.isArray(textObj.styles)) {
-                    textObj.styles = {};
+                  textObj.set({ editable: true });
+                  // Инициализируем styles, если их нет или они некорректны
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+                  if (!(textObj as any).styles || typeof (textObj as any).styles !== 'object') {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+                    (textObj as any).styles = {};
                   }
-                  const textLines = textObj.text?.split('\n') || [];
-                  textLines.forEach((line, index) => {
-                    if (!textObj.styles[index]) {
-                      textObj.styles[index] = {};
+                  // Убеждаемся, что для каждой строки есть массив стилей
+                  const textLines = textObj.text?.split('\n') ?? [];
+                  textLines.forEach((_line, index) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+                    if (!(textObj as any).styles[index]) {
+                      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+                      (textObj as any).styles[index] = {};
                     }
                   });
                 }
@@ -329,7 +377,8 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         }
       }
 
-      const historySafe = () => {
+      // События canvas
+      const historySafe = (): void => {
         if (isRestoringRef.current) return;
         saveHistory();
       };
@@ -361,27 +410,30 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       });
 
       canvas.on('editing:entered', (options) => {
-        const target = options?.target as fabric.Textbox | fabric.IText | fabric.Text | undefined;
-        if (
-          target &&
-          (target.type === 'textbox' || target.type === 'text' || target.type === 'i-text')
-        ) {
-          if (!target.styles || typeof target.styles !== 'object') {
-            // @ts-expect-error styles есть у текстовых объектов fabric
-            target.styles = {};
+        const target = options.target as fabric.Textbox | fabric.IText | fabric.Text | undefined;
+        if (target && (target.type === 'textbox' || target.type === 'text' || target.type === 'i-text')) {
+          // Исправляем проблему с styles для предотвращения ошибки removeStyleFromTo
+          // Инициализируем styles как объект, если его нет
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+          if (!(target as any).styles || typeof (target as any).styles !== 'object') {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+            (target as any).styles = {};
           }
-          const textLines = target.text?.split('\n') || [];
-          textLines.forEach((line, index) => {
-            // @ts-expect-error styles есть у текстовых объектов fabric
-            if (!target.styles[index]) {
-              // @ts-expect-error styles есть у текстовых объектов fabric
-              target.styles[index] = {};
+          // Убеждаемся, что для каждой строки есть объект стилей
+          const textLines = target.text?.split('\n') ?? [];
+          textLines.forEach((_line, index) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+            if (!(target as any).styles[index]) {
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+              (target as any).styles[index] = {};
             }
-            for (let i = 0; i <= line.length; i++) {
-              // @ts-expect-error styles есть у текстовых объектов fabric
-              if (!target.styles[index][i]) {
-                // @ts-expect-error styles есть у текстовых объектов fabric
-                target.styles[index][i] = {};
+            // Убеждаемся, что для каждого символа есть объект стилей
+            const lineLength = _line.length;
+            for (let i = 0; i <= lineLength; i++) {
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+              if (!(target as any).styles[index][i]) {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+                (target as any).styles[index][i] = {};
               }
             }
           });
@@ -389,7 +441,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       });
 
       canvas.on('editing:exited', (options) => {
-        const target = options?.target as fabric.Textbox | undefined;
+        const target = options.target as fabric.Textbox | undefined;
         if (target) {
           saveHistory();
           updateSelectedObject();
@@ -408,10 +460,17 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
         if ((e.key === 'Delete' || e.key === 'Backspace') && canvas.getActiveObject()) {
           e.preventDefault();
           const activeObjects = canvas.getActiveObjects();
+          const bgImage3 = canvas.backgroundImage;
+          const bgVpt3 = canvas.backgroundVpt;
           activeObjects.forEach((obj) => {
-            if (obj !== canvas.backgroundImage && obj !== canvas.backgroundVpt) {
-              canvas.remove(obj);
+            // Не удаляем фоновые объекты (если они есть и являются объектами)
+            if (bgImage3 && typeof bgImage3 === 'object' && obj === bgImage3) {
+              return;
             }
+            if (bgVpt3 && typeof bgVpt3 === 'object' && obj === bgVpt3) {
+              return;
+            }
+            canvas.remove(obj);
           });
           canvas.discardActiveObject();
           canvas.renderAll();
@@ -425,7 +484,15 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       fabricCanvasRef.current = canvas;
       saveHistory();
 
+<<<<<<< HEAD
       return () => {
+=======
+      // eslint-disable-next-line consistent-return
+      return (): void => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('resize', handleResize);
+        // Удаляем обработчик клавиатуры
+>>>>>>> main
         window.removeEventListener('keydown', handleKeyDown);
         canvas.dispose();
         fabricCanvasRef.current = null;
@@ -446,8 +513,9 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       fabric.Image.fromURL(
         backgroundImage.url,
         (img) => {
-          const canvas = fabricCanvasRef.current!;
-          const scale = Math.min(canvas.getWidth() / img.width!, canvas.getHeight() / img.height!);
+          const canvas = fabricCanvasRef.current;
+          if (!canvas || !img.width || !img.height) return;
+          const scale = Math.min(canvas.getWidth() / img.width, canvas.getHeight() / img.height);
           img.scale(scale);
           canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
             scaleX: scale,
@@ -466,10 +534,11 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       fabric.Image.fromURL(
         initialImage.url,
         (img) => {
-          const canvas = fabricCanvasRef.current!;
+          const canvas = fabricCanvasRef.current;
+          if (!canvas || !img.width || !img.height) return;
           const maxWidth = canvas.getWidth() * 0.7;
           const maxHeight = canvas.getHeight() * 0.7;
-          const scale = Math.min(maxWidth / img.width!, maxHeight / img.height!, 1);
+          const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
 
           img.set({
             left: canvas.getWidth() / 2,
@@ -538,14 +607,14 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
           fabric.Image.fromURL(
             imageUrl,
             (img) => {
-              if (!fabricCanvasRef.current || !img) {
-                console.error('Failed to load image or canvas not available');
+              if (!fabricCanvasRef.current) {
+                console.error('Canvas not available');
                 return;
               }
 
               const canvas = fabricCanvasRef.current;
-              const imgWidth = img.width || 1;
-              const imgHeight = img.height || 1;
+              const imgWidth = img.width ?? 1;
+              const imgHeight = img.height ?? 1;
               const maxWidth = canvas.getWidth() * 0.6;
               const maxHeight = canvas.getHeight() * 0.6;
               const scale = Math.min(maxWidth / imgWidth, maxHeight / imgHeight, 1);
@@ -585,14 +654,19 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       if (!fabricCanvasRef.current) return;
       const activeObjects = fabricCanvasRef.current.getActiveObjects();
       if (activeObjects.length === 0) return;
-
+      
+      const canvas = fabricCanvasRef.current;
+      const bgImage4 = canvas.backgroundImage;
+      const bgVpt4 = canvas.backgroundVpt;
       activeObjects.forEach((obj) => {
-        if (
-          obj !== fabricCanvasRef.current?.backgroundImage &&
-          obj !== fabricCanvasRef.current?.backgroundVpt
-        ) {
-          fabricCanvasRef.current?.remove(obj);
+        // Не удаляем фоновые объекты (если они есть и являются объектами)
+        if (bgImage4 && typeof bgImage4 === 'object' && obj === bgImage4) {
+          return;
         }
+        if (bgVpt4 && typeof bgVpt4 === 'object' && obj === bgVpt4) {
+          return;
+        }
+        canvas.remove(obj);
       });
       fabricCanvasRef.current.discardActiveObject();
       fabricCanvasRef.current.renderAll();
@@ -604,14 +678,15 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
     const handleDuplicate = (): void => {
       if (!fabricCanvasRef.current || !selectedObject) return;
 
+      const canvas = fabricCanvasRef.current;
       selectedObject.clone((cloned: fabric.Object) => {
         cloned.set({
-          left: (cloned.left || 0) + 20,
-          top: (cloned.top || 0) + 20,
+          left: (cloned.left ?? 0) + 20,
+          top: (cloned.top ?? 0) + 20,
         });
-        fabricCanvasRef.current!.add(cloned);
-        fabricCanvasRef.current!.setActiveObject(cloned);
-        fabricCanvasRef.current!.renderAll();
+        canvas.add(cloned);
+        canvas.setActiveObject(cloned);
+        canvas.renderAll();
         updateSelectedObject();
       });
     };
@@ -636,6 +711,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       if (!fabricCanvasRef.current) return;
       setHistory((prev) => {
         if (prev.redo.length === 0) return prev;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const current = JSON.stringify(fabricCanvasRef.current!.toJSON());
         const target = prev.redo[0];
         setTimeout(() => loadFromHistory(target), 0);
@@ -653,8 +729,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       if (t !== 'textbox' && t !== 'text' && t !== 'i-text') return;
 
       const textObj = selectedObject as fabric.Textbox | fabric.IText | fabric.Text;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      textObj.set(property as any, value);
+      textObj.set({ [property]: value });
       fabricCanvasRef.current.renderAll();
       updateSelectedObject();
     };
@@ -665,7 +740,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
       const t = selectedObject.type;
       if (t !== 'textbox' && t !== 'text' && t !== 'i-text') return;
       const textObj = selectedObject as fabric.Textbox | fabric.IText | fabric.Text;
-      const newSize = Math.max(8, Math.min(200, (textObj.fontSize || 24) + delta));
+      const newSize = Math.max(8, Math.min(200, (textObj.fontSize ?? 24) + delta));
       updateTextProperty('fontSize', newSize);
     };
 
@@ -715,7 +790,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
 
         await Promise.resolve(
           onSave(file, {
-            fabric: fabricJson || undefined,
+            fabric: fabricJson ?? undefined, // Полный JSON для восстановления (если доступен)
             meta,
           }),
         );
@@ -855,11 +930,85 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
             <div
               className="bg-white shadow-lg rounded-lg p-2 inline-block"
               style={{
-                transform: `scale(${zoom / 100})`,
+                transform: `scale(${String(zoom / 100)})`,
                 transformOrigin: 'top left',
               }}
             >
+<<<<<<< HEAD
               <canvas ref={canvasRef} />
+=======
+              {/* Визуальные разметки границ карточки */}
+              {(() => {
+                const [width, height] = cardSize.split('x').map(Number);
+                return (
+                  <>
+                    {/* Рамка вокруг canvas */}
+                    <div
+                      className="absolute inset-0 border-4 border-blue-500 border-dashed pointer-events-none"
+                      style={{
+                        width: `${String(width + 16)}px`, // +16 для padding
+                        height: `${String(height + 16)}px`,
+                        margin: '-8px',
+                      }}
+                    />
+                    {/* Размеры по краям */}
+                    {/* Верхний край */}
+                    <div
+                      className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-b pointer-events-none"
+                      style={{ marginTop: '-8px' }}
+                    >
+                      {String(width)}px
+                    </div>
+                    {/* Правый край */}
+                    <div
+                      className="absolute right-0 top-1/2 transform translate-x-full -translate-y-1/2 bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-l pointer-events-none whitespace-nowrap"
+                      style={{ marginRight: '-8px' }}
+                    >
+                      {String(height)}px
+                    </div>
+                    {/* Нижний край */}
+                    <div
+                      className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-t pointer-events-none"
+                      style={{ marginBottom: '-8px' }}
+                    >
+                      {String(width)}px
+                    </div>
+                    {/* Левый край */}
+                    <div
+                      className="absolute left-0 top-1/2 transform -translate-x-full -translate-y-1/2 bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-r pointer-events-none whitespace-nowrap"
+                      style={{ marginLeft: '-8px' }}
+                    >
+                      {String(height)}px
+                    </div>
+                    {/* Угловые метки */}
+                    {/* Верхний левый угол */}
+                    <div
+                      className="absolute top-0 left-0 bg-blue-500 w-3 h-3 pointer-events-none"
+                      style={{ marginTop: '-8px', marginLeft: '-8px' }}
+                    />
+                    {/* Верхний правый угол */}
+                    <div
+                      className="absolute top-0 right-0 bg-blue-500 w-3 h-3 pointer-events-none"
+                      style={{ marginTop: '-8px', marginRight: '-8px' }}
+                    />
+                    {/* Нижний левый угол */}
+                    <div
+                      className="absolute bottom-0 left-0 bg-blue-500 w-3 h-3 pointer-events-none"
+                      style={{ marginBottom: '-8px', marginLeft: '-8px' }}
+                    />
+                    {/* Нижний правый угол */}
+                    <div
+                      className="absolute bottom-0 right-0 bg-blue-500 w-3 h-3 pointer-events-none"
+                      style={{ marginBottom: '-8px', marginRight: '-8px' }}
+                    />
+                  </>
+                );
+              })()}
+              {/* Canvas с белым фоном и тенью */}
+              <div className="bg-white shadow-lg rounded-lg p-2 inline-block">
+                <canvas ref={canvasRef} />
+              </div>
+>>>>>>> main
             </div>
           </div>
 
@@ -1001,6 +1150,7 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                       </div>
                     </div>
                   </div>
+<<<<<<< HEAD
                 )}
 
                 {/* Редактирование изображения */}
@@ -1037,6 +1187,44 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                           <RotateCw className="h-4 w-4" />
                         </button>
                       </div>
+=======
+                </div>
+              )}
+
+              {/* Редактирование изображения */}
+              {isImageSelected && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Поворот</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (!fabricCanvasRef.current) return;
+                          const currentAngle = selectedObject.angle ?? 0;
+                          selectedObject.set({ angle: (currentAngle - 15) % 360 });
+                          fabricCanvasRef.current.renderAll();
+                          updateSelectedObject();
+                        }}
+                        className="p-2 bg-gray-100 rounded hover:bg-gray-200"
+                      >
+                        <RotateCw className="h-4 w-4 rotate-180" />
+                      </button>
+                      <span className="flex-1 text-center text-sm">
+                        {Math.round(selectedObject.angle ?? 0)}°
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (!fabricCanvasRef.current) return;
+                          const currentAngle = selectedObject.angle ?? 0;
+                          selectedObject.set({ angle: (currentAngle + 15) % 360 });
+                          fabricCanvasRef.current.renderAll();
+                          updateSelectedObject();
+                        }}
+                        className="p-2 bg-gray-100 rounded hover:bg-gray-200"
+                      >
+                        <RotateCw className="h-4 w-4" />
+                      </button>
+>>>>>>> main
                     </div>
 
                     <div>
@@ -1046,6 +1234,100 @@ export const CardEditor = forwardRef<CardEditorRef, CardEditorProps>(
                     </div>
                   </div>
                 )}
+<<<<<<< HEAD
+=======
+
+              {/* Изменение цвета для объектов с заливкой */}
+              {hasFill && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Цвет заливки</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={(() => {
+                          const { fill } = selectedObject;
+                          if (fill && typeof fill === 'string') {
+                            return fill.startsWith('#') ? fill : `#${fill}`;
+                          }
+                          return '#000000';
+                        })()}
+                        onChange={(e) => updateFillColor(e.target.value)}
+                        className="w-full h-10 border border-gray-300 rounded cursor-pointer"
+                      />
+                    </div>
+                    {selectedObject.fill && typeof selectedObject.fill === 'string' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Текущий: {selectedObject.fill}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Изменение цвета обводки для объектов с обводкой */}
+              {hasStroke && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Цвет обводки</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={(() => {
+                          const { stroke } = selectedObject;
+                          if (stroke && typeof stroke === 'string') {
+                            return stroke.startsWith('#') ? stroke : `#${stroke}`;
+                          }
+                          return '#000000';
+                        })()}
+                        onChange={(e) => updateStrokeColor(e.target.value)}
+                        className="w-full h-10 border border-gray-300 rounded cursor-pointer"
+                        disabled={!selectedObject.strokeWidth || selectedObject.strokeWidth === 0}
+                      />
+                    </div>
+                    {selectedObject.stroke && typeof selectedObject.stroke === 'string' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Текущий: {selectedObject.stroke}
+                      </p>
+                    )}
+                    {(!selectedObject.strokeWidth || selectedObject.strokeWidth === 0) && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Установите толщину обводки для изменения цвета
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Изменение радиуса скругления для прямоугольников */}
+              {selectedObject.type === 'rect' && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Радиус скругления углов
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={Math.round((selectedObject as fabric.Rect).rx ?? 0)}
+                        onChange={(e) => updateCornerRadius(Number(e.target.value))}
+                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-600 w-12 text-right">
+                        {Math.round((selectedObject as fabric.Rect).rx ?? 0)}px
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Используйте ползунок для изменения радиуса скругления
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              
+>>>>>>> main
 
                 {/* Общие свойства */}
                 <div className="mt-4 pt-4 border-t border-gray-200">

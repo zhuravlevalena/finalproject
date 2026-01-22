@@ -10,21 +10,19 @@ import type { LayoutSchema } from '@/entities/layout/model/layout.schemas';
 import { Card } from '@/shared/ui/card';
 import { Settings, Sparkles, Layers, AlertTriangle, Ruler } from 'lucide-react';
 
-// Поддерживаемые размеры canvas (формат width x height) для каждого маркетплейса
 type CardSize = '900x1200' | '1200x1600' | '1500x2000' | '1200x1200';
 
 const marketplaceCardSizes: Record<string, CardSize[]> = {
-  // Вертикальное 3:4, не менее 700x900
   wildberries: ['900x1200', '1200x1600', '1500x2000'],
-  // Ozon: вертикальное 3:4, от 200x200 до 4320x7680 — используем удобные пресеты
+
   ozon: ['900x1200', '1200x1600', '1500x2000'],
-  // Яндекс.Маркет: 3:4 или 1:1
+
   'yandex-market': ['900x1200', '1200x1600', '1200x1200'],
 };
 
 const getAvailableSizes = (marketplaceSlug: string | null): CardSize[] => {
   if (!marketplaceSlug) return ['900x1200'];
-  return marketplaceCardSizes[marketplaceSlug] || ['900x1200'];
+  return marketplaceCardSizes[marketplaceSlug] ?? ['900x1200'];
 };
 
 const MARKETPLACE_RULES: Record<
@@ -94,7 +92,6 @@ const MARKETPLACE_RULES: Record<
   },
 };
 
-// Запрещённые слова/фразы для мягкой проверки текста по маркетплейсам
 const MARKETPLACE_FORBIDDEN_PATTERNS: Record<string, string[]> = {
   'yandex-market': [
     'скидка',
@@ -153,24 +150,22 @@ type FabricLikeObject = {
   [key: string]: unknown;
 };
 
-// Мягкая проверка текста: ищем запрещённые слова в текстовых объектах canvasData
 function collectTextWarnings(
   canvasData: { fabric?: Record<string, unknown>; [key: string]: unknown } | undefined,
   marketplaceSlug: string | null,
 ): string[] {
-  if (!canvasData || !canvasData.fabric || !marketplaceSlug) return [];
+  if (!canvasData?.fabric || !marketplaceSlug) return [];
 
   const patterns = MARKETPLACE_FORBIDDEN_PATTERNS[marketplaceSlug];
-  if (!patterns || patterns.length === 0) return [];
+  if (patterns.length === 0) return [];
 
   const fabricData = canvasData.fabric as { objects?: FabricLikeObject[] };
-  const objects = fabricData.objects || [];
+  const objects = fabricData.objects ?? [];
 
   const lowerPatterns = patterns.map((p) => p.toLowerCase());
   const warnings: string[] = [];
 
-  const visitObject = (obj: FabricLikeObject) => {
-    // Текстовые объекты
+  const visitObject = (obj: FabricLikeObject): void => {
     if (obj.type === 'textbox' || obj.type === 'text' || obj.type === 'i-text') {
       const text = typeof obj.text === 'string' ? obj.text : '';
       const textLower = text.toLowerCase();
@@ -188,7 +183,6 @@ function collectTextWarnings(
       }
     }
 
-    // Группы / вложенные объекты
     if (Array.isArray(obj.objects)) {
       obj.objects.forEach((child) => visitObject(child));
     }
@@ -233,18 +227,16 @@ export default function LayoutEditorPage(): React.JSX.Element {
     void fetchLayout();
   }, [params?.id]);
 
-  // Загружаем маркетплейсы
   useEffect(() => {
     void dispatch(fetchMarketplacesThunk());
   }, [dispatch]);
 
-  // Инициализация выбранного маркетплейса и размера после загрузки layout и marketplaces
   useEffect(() => {
-    if (!layout || !marketplaces?.length) return;
+    if (!layout || !marketplaces.length) return;
 
     const templateMarketplaceId = layout.template?.marketplaceId ?? null;
     const initialMarketplace =
-      (templateMarketplaceId && marketplaces.find((m) => m.id === templateMarketplaceId)) ||
+      (templateMarketplaceId && marketplaces.find((m) => m.id === templateMarketplaceId)) ??
       marketplaces[0];
 
     if (initialMarketplace) {
@@ -262,7 +254,6 @@ export default function LayoutEditorPage(): React.JSX.Element {
     try {
       if (!layout) return;
 
-      // Нормализуем canvasData в формат слайдов (совместимость с EditCard)
       const normalizedCanvasData = canvasData
         ? {
             fabric: canvasData.fabric ?? null,
@@ -283,7 +274,6 @@ export default function LayoutEditorPage(): React.JSX.Element {
           }
         : undefined;
 
-      // Создаем новую карточку на основе макета
       const cardData = {
         title: `Карточка из макета: ${layout.name}`,
         marketplaceId: selectedMarketplaceId ?? layout.template?.marketplaceId,
@@ -292,69 +282,62 @@ export default function LayoutEditorPage(): React.JSX.Element {
         status: 'completed' as const,
       };
 
-      const newCard = await productCardService.create(cardData, imageFile);
+      await productCardService.create(cardData, imageFile);
 
-      // После создания ведём пользователя на страницу "Мои карточки",
-      // где новая карточка появится в списке
       setLocation('/dashboard');
     } catch (err) {
       console.error('Error saving card:', err);
     }
   };
 
-  // Определяем размер canvas на основе выбранного маркетплейса
+  // eslint-disable-next-line arrow-body-style
   const getCanvasSize = (): string => {
     return cardSize;
   };
 
-  // Парсим canvasData и правильно структурируем для CardEditor
-  const getCanvasData = () => {
+  type CanvasData = {
+    fabric?: Record<string, unknown> | undefined;
+    meta?: Record<string, unknown>;
+  };
+
+  const getCanvasData = (): CanvasData | undefined => {
     if (!layout?.canvasData) return undefined;
 
     try {
       let parsedData: Record<string, unknown>;
 
-      // Если canvasData это строка - парсим её
       if (typeof layout.canvasData === 'string') {
-        parsedData = JSON.parse(layout.canvasData);
+        parsedData = JSON.parse(layout.canvasData) as Record<string, unknown>;
       } else {
-        parsedData = layout.canvasData as Record<string, unknown>;
+        parsedData = layout.canvasData;
       }
 
-      // Структура из сидера: { version, objects }
-      // CardEditor ожидает: { fabric: { version, objects }, meta: {} }
-      // Если уже есть структура с fabric - используем её, иначе оборачиваем
       if (parsedData.fabric) {
-        // Уже правильная структура
         return parsedData as {
           fabric?: Record<string, unknown>;
           meta?: Record<string, unknown>;
         };
-      } else {
-        // Оборачиваем в структуру fabric
-        return {
-          fabric: parsedData,
-          meta: {
-            cardSize: getCanvasSize(),
-            slideCount: 1,
-            source: 'layout',
-            layoutId: layout?.id,
-          },
-        };
       }
+
+      return {
+        fabric: parsedData,
+        meta: {
+          cardSize: getCanvasSize(),
+          slideCount: 1,
+          source: 'layout',
+          layoutId: layout.id,
+        },
+      };
     } catch (err) {
       console.error('❌ Error parsing canvasData:', err);
       return undefined;
     }
   };
 
-  const currentMarketplace = marketplaces?.find((m) => m.id === selectedMarketplaceId);
+  const currentMarketplace = marketplaces.find((m) => m.id === selectedMarketplaceId);
   const currentRules =
-    currentMarketplace && MARKETPLACE_RULES[currentMarketplace.slug]
-      ? MARKETPLACE_RULES[currentMarketplace.slug]
-      : null;
+    (currentMarketplace?.slug && MARKETPLACE_RULES[currentMarketplace.slug]) ?? null;
 
-  // Подготовим данные один раз, чтобы не парсить при каждом рендере
   const canvasData = useMemo(() => {
     const data = getCanvasData();
     console.log('📦 LayoutEditorPage canvasData:', { data, layout: layout?.canvasData });
@@ -377,7 +360,7 @@ export default function LayoutEditorPage(): React.JSX.Element {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 text-lg">{error || 'Макет не найден'}</p>
+          <p className="text-red-500 text-lg">{error ?? 'Макет не найден'}</p>
           <button
             onClick={() => window.history.back()}
             className="mt-4 text-blue-600 hover:text-blue-700"
@@ -391,7 +374,6 @@ export default function LayoutEditorPage(): React.JSX.Element {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* Заголовок с анимацией */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -430,28 +412,25 @@ export default function LayoutEditorPage(): React.JSX.Element {
             </h1>
             <p className="text-gray-600 text-lg flex items-center gap-2 mt-1 flex-wrap">
               <Sparkles className="h-5 w-5 text-purple-500" />
-              {layout.description || 'Редактор макета'} •{' '}
-              {currentMarketplace?.name ||
-                layout.template?.marketplace?.name ||
+              {layout.description ?? 'Редактор макета'} •{' '}
+              {currentMarketplace?.name ??
+                layout.template?.marketplace?.name ??
                 'Маркетплейс не выбран'}
-              {cardSize && (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold border-2 border-blue-300"
-                >
-                  <Ruler className="h-4 w-4" />
-                  {cardSize.replace('x', ' × ')} px
-                </motion.span>
-              )}
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold border-2 border-blue-300"
+              >
+                <Ruler className="h-4 w-4" />
+                {cardSize.replace('x', ' × ')} px
+              </motion.span>
             </p>
           </div>
         </div>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Редактор */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -459,7 +438,6 @@ export default function LayoutEditorPage(): React.JSX.Element {
           className="lg:col-span-3"
         >
           <Card className="p-6 bg-white/80 backdrop-blur-sm border-2 border-gray-200/50 shadow-xl hover:shadow-2xl transition-all duration-300">
-            {/* Индикатор размера карточки */}
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -500,7 +478,6 @@ export default function LayoutEditorPage(): React.JSX.Element {
           </Card>
         </motion.div>
 
-        {/* Боковая панель */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -508,7 +485,6 @@ export default function LayoutEditorPage(): React.JSX.Element {
           className="space-y-4"
         >
           <Card className="p-5 bg-white/80 backdrop-blur-sm border-2 border-gray-200/50 shadow-xl">
-            {/* Табы */}
             <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -538,7 +514,6 @@ export default function LayoutEditorPage(): React.JSX.Element {
               </motion.button>
             </div>
 
-            {/* Контент табов */}
             <AnimatePresence mode="wait">
               {activeTab === 'settings' && (
                 <motion.div
@@ -549,7 +524,6 @@ export default function LayoutEditorPage(): React.JSX.Element {
                   transition={{ duration: 0.2 }}
                   className="space-y-5"
                 >
-                  {/* Предупреждения */}
                   {textWarnings.length > 0 && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
@@ -561,8 +535,8 @@ export default function LayoutEditorPage(): React.JSX.Element {
                         Предупреждения:
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-xs text-orange-700">
-                        {textWarnings.map((warning, idx) => (
-                          <li key={idx}>{warning}</li>
+                        {textWarnings.map((warning) => (
+                          <li key={warning}>{warning}</li>
                         ))}
                       </ul>
                     </motion.div>
@@ -578,7 +552,7 @@ export default function LayoutEditorPage(): React.JSX.Element {
                       onChange={(e) => {
                         const id = e.target.value ? Number(e.target.value) : null;
                         setSelectedMarketplaceId(id);
-                        const mp = marketplaces?.find((m) => m.id === id) || null;
+                        const mp = marketplaces.find((m) => m.id === id) ?? null;
                         const slug = mp?.slug ?? null;
                         setSelectedMarketplaceSlug(slug);
                         const sizes = getAvailableSizes(slug);
@@ -587,7 +561,7 @@ export default function LayoutEditorPage(): React.JSX.Element {
                       className="w-full p-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white shadow-sm hover:shadow-md"
                     >
                       <option value="">Выберите маркетплейс</option>
-                      {marketplaces?.map((mp) => (
+                      {marketplaces.map((mp) => (
                         <option key={mp.id} value={mp.id}>
                           {mp.name}
                         </option>
@@ -652,16 +626,19 @@ export default function LayoutEditorPage(): React.JSX.Element {
                     </ul>
                   </div>
 
-                  {currentRules.infographicAllowed && currentRules.infographicAllowed.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-green-700 mb-2">Инфографика — что можно:</h4>
-                      <ul className="list-disc list-inside space-y-1 text-green-600 pl-2">
-                        {currentRules.infographicAllowed.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {currentRules.infographicAllowed &&
+                    currentRules.infographicAllowed.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-green-700 mb-2">
+                          Инфографика — что можно:
+                        </h4>
+                        <ul className="list-disc list-inside space-y-1 text-green-600 pl-2">
+                          {currentRules.infographicAllowed.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                   <div>
                     <h4 className="font-semibold text-red-700 mb-2">Инфографика — что нельзя:</h4>

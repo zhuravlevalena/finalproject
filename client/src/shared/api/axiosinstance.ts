@@ -32,15 +32,15 @@ axiosInstance.interceptors.response.use(
         });
         accessToken = response.data.accessToken;
         setAccessToken(accessToken);
-        if (prev.headers) {
-          prev.headers.Authorization = `Bearer ${accessToken}`;
-        }
-        return axiosInstance(prev);
+        prev.headers.Authorization = `Bearer ${accessToken}`;
+        return await axiosInstance(prev);
       } catch (refreshError) {
         // Если refresh не удался, очищаем токен
         accessToken = '';
         setAccessToken('');
-        return Promise.reject(refreshError);
+        return Promise.reject(
+          refreshError instanceof Error ? refreshError : new Error(String(refreshError))
+        );
       }
     }
 
