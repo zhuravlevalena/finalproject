@@ -8,20 +8,20 @@ export const imageService = {
   },
 
   getById: async (id: number): Promise<Image> => {
-    const response = await axiosInstance.get<Image>(`/images/${id}`);
+   const response = await axiosInstance.get<Image>(`/images/${String(id)}`);
     return response.data;
   },
 
   upload: async (file: File): Promise<Image> => {
     const formData = new FormData();
     formData.append('image', file);
-    // НЕ устанавливаем Content-Type вручную - браузер сделает это автоматически с правильным boundary
+  
     const response = await axiosInstance.post<Image>('/images/upload', formData);
     return response.data;
   },
 
   delete: async (id: number): Promise<void> => {
-    await axiosInstance.delete(`/images/${id}`);
+    await axiosInstance.delete(`/images/${String(id)}`);
   },
 
   generate: async (prompt: string): Promise<Image> => {

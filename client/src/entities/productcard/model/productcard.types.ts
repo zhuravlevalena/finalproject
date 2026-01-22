@@ -17,11 +17,11 @@ export type ProductCard = {
   productProfile?: ProductProfile;
   title?: string;
   description?: string;
-  canvasData?: Record<string, unknown>; // Теперь только метаданные
+  canvasData?: Record<string, unknown>; 
   imageId?: number;
   image?: Image;
   generatedImageId?: number;
-  generatedImage?: Image; // Готовое изображение карточки
+  generatedImage?: Image;
   status: CardStatus;
   createdAt: string;
   updatedAt: string;

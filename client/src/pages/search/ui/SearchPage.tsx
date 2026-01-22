@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { productCardService } from '@/entities/productcard/api/productcard.service';
@@ -80,18 +81,18 @@ async function runSearch(query: string): Promise<SearchResult> {
     productProfileService.getAll(),
   ]);
 
-  // Поиск по карточкам товаров
+  
   const cards: ProductCard[] =
     cardsRes.status === 'fulfilled'
       ? cardsRes.value.filter((card) => {
           const title = (card.title ?? '').toLowerCase();
-          const marketplace = card.marketplace?.name?.toLowerCase() ?? '';
-          const status = (card.status ?? '').toLowerCase();
+          const marketplace = card.marketplace?.name.toLowerCase() ?? '';
+          const status = card.status.toLowerCase();
           return title.includes(normalized) || marketplace.includes(normalized) || status.includes(normalized);
         })
       : [];
 
-  // Поиск по шаблонам
+  
   const templates: Template[] =
     templatesRes.status === 'fulfilled'
       ? templatesRes.value.filter((tpl) => {
@@ -101,18 +102,18 @@ async function runSearch(query: string): Promise<SearchResult> {
         })
       : [];
 
-  // Поиск по маркетплейсам
+  
   const marketplaces: Marketplace[] =
     marketplacesRes.status === 'fulfilled'
       ? marketplacesRes.value.filter((mp) => {
-          const name = (mp.name ?? '').toLowerCase();
-          const slug = (mp.slug ?? '').toLowerCase();
+          const name = (mp.name).toLowerCase();
+          const slug = (mp.slug).toLowerCase();
           const requirements = (mp.requirements ?? '').toLowerCase();
           return name.includes(normalized) || slug.includes(normalized) || requirements.includes(normalized);
         })
       : [];
 
-  // Поиск по профилям товаров
+  
   const profiles: ProductProfile[] =
     profilesRes.status === 'fulfilled'
       ? profilesRes.value.filter((profile) => {
@@ -127,7 +128,7 @@ async function runSearch(query: string): Promise<SearchResult> {
         })
       : [];
 
-  // Поиск по макетам (через шаблоны)
+ 
   const layoutsPromises: Promise<LayoutSchema[]>[] = [];
   if (templatesRes.status === 'fulfilled') {
     for (const template of templatesRes.value) {
@@ -146,12 +147,12 @@ async function runSearch(query: string): Promise<SearchResult> {
   }
 
   const layouts: LayoutSchema[] = allLayouts.filter((layout) => {
-    const name = (layout.name ?? '').toLowerCase();
+    const name = (layout.name).toLowerCase();
     const description = (layout.description ?? '').toLowerCase();
     return name.includes(normalized) || description.includes(normalized);
   });
 
-  // Поиск по статическим страницам
+  
   const pages: PageResult[] = staticPages.filter((page) => {
     const title = page.title.toLowerCase();
     const description = page.description.toLowerCase();
@@ -231,9 +232,9 @@ export default function SearchPage(): React.JSX.Element {
         <section>
           <h2 className="text-xl font-semibold mb-3">Страницы сайта</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {pages.map((page, idx) => (
+            {pages.map((page) => (
               <a
-                key={idx}
+                key={page.path}
                 href={page.path}
                 className="block rounded-xl border border-border bg-card p-4 hover:border-primary hover:shadow-lg transition-all duration-200"
               >
@@ -252,14 +253,14 @@ export default function SearchPage(): React.JSX.Element {
             {cards.map((card) => (
               <a
                 key={card.id}
-                href={`/edit-card/${card.id}`}
+                href={`/edit-card/${card.id.toString()}`}
                 className="block rounded-xl border border-border bg-card p-4 hover:border-primary hover:shadow-lg transition-all duration-200"
               >
                 <h3 className="font-semibold mb-1 line-clamp-2">
-                  {card.title || 'Без названия'}
+                  {card.title ?? 'Без названия'}
                 </h3>
                 <p className="text-xs text-muted-foreground mb-1">
-                  {card.marketplace?.name || 'Маркетплейс не указан'}
+                  {card.marketplace?.name ?? 'Маркетплейс не указан'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Статус:{' '}
@@ -301,7 +302,7 @@ export default function SearchPage(): React.JSX.Element {
             {layouts.map((layout) => (
               <a
                 key={layout.id}
-                href={`/layout-editor/${layout.id}`}
+               href={`/layout-editor/${layout.id.toString()}`}
                 className="block rounded-xl border border-border bg-card p-4 hover:border-primary hover:shadow-lg transition-all duration-200"
               >
                 <h3 className="font-semibold mb-1 line-clamp-2">{layout.name}</h3>

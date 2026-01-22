@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { X } from 'lucide-react';
@@ -12,19 +13,30 @@ type TemplateSelectorModalProps = {
   onClose: () => void;
 };
 
+type CanvasData = {
+  version?: string;
+  objects?: unknown[];
+};
+
+type FabricObject = {
+  type?: string;
+  src?: string;
+  crossOrigin?: string;
+  [key: string]: unknown;
+};
+
 export function TemplateSelectorModal({
   isOpen,
   onClose,
 }: TemplateSelectorModalProps): React.JSX.Element | null {
   const [, setLocation] = useLocation();
   const [templates, setTemplates] = useState<TemplateSchema[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'universal' | 'categories'>('universal');
   const [layoutPreviews, setLayoutPreviews] = useState<Map<number, string>>(new Map());
-  const [previewsRendered, setPreviewsRendered] = useState(false);
+  const [, setPreviewsRendered] = useState<boolean>(false);
 
-  // Загружаем шаблоны при открытии модалки
   useEffect(() => {
     if (!isOpen) return;
 
@@ -33,7 +45,7 @@ export function TemplateSelectorModal({
         setLoading(true);
         const data = await templateService.getAll();
         setTemplates(data);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Error fetching templates:', err);
         setError('Ошибка загрузки шаблонов');
       } finally {
@@ -45,26 +57,27 @@ export function TemplateSelectorModal({
   }, [isOpen]);
 
   const handleTemplateSelect = (templateId: number): void => {
-    setLocation(`/templates?templateId=${String(templateId)}`);
+    setLocation(`/templates?templateId=${templateId.toString()}`);
     onClose();
   };
 
   const handleLayoutSelect = (layoutId: number): void => {
-    setLocation(`/layout-editor/${layoutId}`);
+    setLocation(`/layout-editor/${layoutId.toString()}`);
     onClose();
   };
 
-  // Готовим данные для вкладок
   const { universalLayouts, categoryTemplates } = useMemo(() => {
     if (!templates.length) {
-      return { universalLayouts: [] as LayoutSchema[], categoryTemplates: [] as TemplateSchema[] };
+      return { 
+        universalLayouts: [] as LayoutSchema[], 
+        categoryTemplates: [] as TemplateSchema[] 
+      };
     }
 
     const marketplaceTemplates = templates;
     const defaultTemplate = marketplaceTemplates.find((t) => t.isDefault);
     const universal = (defaultTemplate?.layouts as LayoutSchema[] | undefined) ?? [];
 
-    // Фильтруем категории и убираем дубликаты по названию
     const categoryMap = new Map<string, TemplateSchema>();
     marketplaceTemplates
       .filter((t) => !t.isDefault)
@@ -79,32 +92,33 @@ export function TemplateSelectorModal({
     return { universalLayouts: universal, categoryTemplates: categories };
   }, [templates]);
 
-  // Рендерим превью для универсальных макетов из canvasData
-  useEffect(() => {
+    useEffect(() => {
     const renderPreviews = async (): Promise<void> => {
       if (!isOpen || activeTab !== 'universal' || universalLayouts.length === 0) {
         setPreviewsRendered(true);
         return;
       }
 
-      const previews = new Map<number, string>();
-
-      for (const layout of universalLayouts) {
-        if (!layout.canvasData) continue;
+      const previewPromises = universalLayouts.map(async (layout): Promise<[number, string] | null> => {
+        if (!layout.canvasData) {
+          return null;
+        }
 
         try {
-          let canvasData: { version?: string; objects?: unknown[] } | null = null;
+          let canvasData: CanvasData | null = null;
           if (typeof layout.canvasData === 'string') {
-            canvasData = JSON.parse(layout.canvasData);
+            canvasData = JSON.parse(layout.canvasData) as CanvasData;
           } else if (typeof layout.canvasData === 'object') {
-            canvasData = layout.canvasData as { version?: string; objects?: unknown[] };
+            canvasData = layout.canvasData as CanvasData;
           }
 
-          if (!canvasData || !canvasData.objects || !Array.isArray(canvasData.objects)) continue;
+          if (!Array.isArray(canvasData?.objects)) {
+            return null;
+          }
 
-          const processedObjects = canvasData.objects.map((obj: unknown) => {
+          const processedObjects = canvasData.objects.map((obj: unknown): unknown => {
             if (typeof obj === 'object' && obj !== null) {
-              const imageObj = obj as { type?: string; src?: string; crossOrigin?: string };
+              const imageObj = obj as FabricObject;
               if (imageObj.type === 'image' && imageObj.src) {
                 let imageSrc = imageObj.src;
                 if (imageSrc.startsWith('/')) {
@@ -116,7 +130,7 @@ export function TemplateSelectorModal({
             return obj;
           });
 
-          const processedCanvasData = {
+          const processedCanvasData: CanvasData = {
             ...canvasData,
             objects: processedObjects,
           };
@@ -125,7 +139,10 @@ export function TemplateSelectorModal({
           canvas.width = 900;
           canvas.height = 1200;
 
-          if (!canvas || !canvas.getContext) continue;
+          const context = canvas.getContext('2d');
+          if (!context) {
+            return null;
+          }
 
           const fabricCanvas = new fabric.Canvas(canvas, {
             width: 900,
@@ -133,19 +150,17 @@ export function TemplateSelectorModal({
             backgroundColor: '#ffffff',
           });
 
-          if (!fabricCanvas || !fabricCanvas.lowerCanvasEl) continue;
-
-          await new Promise<void>((resolve) => {
+          const result = await new Promise<[number, string] | null>((resolve) => {
             fabric.util.enlivenObjects(
-              processedCanvasData.objects,
-              async (enlivenedObjects) => {
+              processedCanvasData.objects ?? [],
+              async (enlivenedObjects: fabric.Object[]) => {
                 try {
                   fabricCanvas.clear();
-                  enlivenedObjects.forEach((obj) => {
+                  enlivenedObjects.forEach((obj: fabric.Object) => {
                     if (obj.type === 'image') {
                       const img = obj as fabric.Image;
                       const element = img.getElement();
-                      if (element) {
+                      if (element instanceof HTMLImageElement) {
                         element.crossOrigin = 'anonymous';
                       }
                     }
@@ -158,19 +173,18 @@ export function TemplateSelectorModal({
                   if (images.length > 0) {
                     await Promise.all(
                       images.map(
-                        (img) =>
+                        (img: fabric.Image) =>
                           new Promise<void>((imgResolve) => {
                             const element = img.getElement();
-                            if (element) {
-                              if (!element.crossOrigin) {
-                                element.crossOrigin = 'anonymous';
-                              }
+                            if (element instanceof HTMLImageElement) {
+                              element.crossOrigin ??= 'anonymous';
 
                               if (element.complete && element.naturalWidth > 0) {
                                 imgResolve();
                               } else {
                                 const onLoad = (): void => {
                                   element.removeEventListener('load', onLoad);
+                                  // eslint-disable-next-line no-use-before-define
                                   element.removeEventListener('error', onError);
                                   imgResolve();
                                 };
@@ -195,35 +209,45 @@ export function TemplateSelectorModal({
                     );
                   }
 
-                  if (fabricCanvas.lowerCanvasEl && fabricCanvas.getContext()) {
-                    fabricCanvas.renderAll();
+                  fabricCanvas.renderAll();
 
-                    const dataURL = fabricCanvas.toDataURL({
-                      format: 'png',
-                      quality: 0.8,
-                      multiplier: 0.3,
-                    });
+                  const dataURL = fabricCanvas.toDataURL({
+                    format: 'png',
+                    quality: 0.8,
+                    multiplier: 0.3,
+                  });
 
-                    previews.set(layout.id, dataURL);
-                  }
-                } catch (renderErr) {
-                  console.warn(`Error rendering layout ${layout.id}:`, renderErr);
+                  resolve([layout.id, dataURL]);
+                } catch (renderErr: unknown) {
+                  console.warn(`Error rendering layout ${layout.id.toString()}:`, renderErr);
+                  resolve(null);
                 } finally {
                   try {
-                    fabricCanvas.clear();
+                    fabricCanvas.dispose();
                   } catch {
                     // ignore
                   }
-                  resolve();
                 }
               },
               'fabric',
             );
           });
-        } catch (err) {
-          console.warn(`Could not render preview for layout ${layout.id}:`, err);
+
+          return result;
+        } catch (err: unknown) {
+          console.warn(`Could not render preview for layout ${layout.id.toString()}:`, err);
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(previewPromises);
+      const previews = new Map<number, string>();
+      
+      results.forEach((result) => {
+        if (result !== null) {
+          previews.set(result[0], result[1]);
+        }
+      });
 
       setLayoutPreviews(previews);
       setPreviewsRendered(true);
@@ -234,7 +258,7 @@ export function TemplateSelectorModal({
     } else {
       setPreviewsRendered(true);
     }
-  }, [universalLayouts, activeTab, isOpen]);
+  }, [isOpen, activeTab, universalLayouts]);
 
   return (
     <AnimatePresence>
@@ -258,181 +282,194 @@ export function TemplateSelectorModal({
             transition={{ delay: 0.1, duration: 0.4 }}
             className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
           >
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 sm:p-6 border-b">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Шаблоны макетов</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Выберите универсальный макет или макет по категории. Маркетплейс можно будет настроить на следующем шаге.
-            </p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b border-gray-200 px-4 sm:px-6">
-          <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-            <button
-              className={`whitespace-nowrap py-3 px-1 border-b-2 text-sm font-medium ${
-                activeTab === 'universal'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              onClick={() => setActiveTab('universal')}
-            >
-              Универсальные макеты
-            </button>
-            <button
-              className={`whitespace-nowrap py-3 px-1 border-b-2 text-sm font-medium ${
-                activeTab === 'categories'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-              onClick={() => setActiveTab('categories')}
-            >
-              По категориям
-            </button>
-          </nav>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">Загрузка шаблонов...</p>
+            {/* Header */}
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Шаблоны макетов</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Выберите универсальный макет или макет по категории. Маркетплейс можно будет настроить на следующем шаге.
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={onClose} 
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={24} />
+              </button>
             </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <p className="text-red-500 text-lg">{error}</p>
+
+            {/* Tabs */}
+            <div className="border-b border-gray-200 px-4 sm:px-6">
+              <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                <button
+                  type="button"
+                  className={`whitespace-nowrap py-3 px-1 border-b-2 text-sm font-medium ${
+                    activeTab === 'universal'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('universal')}
+                >
+                  Универсальные макеты
+                </button>
+                <button
+                  type="button"
+                  className={`whitespace-nowrap py-3 px-1 border-b-2 text-sm font-medium ${
+                    activeTab === 'categories'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('categories')}
+                >
+                  По категориям
+                </button>
+              </nav>
             </div>
-          ) : activeTab === 'universal' ? (
-            universalLayouts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {universalLayouts.map((layout) => (
-                  <div
-                    key={layout.id}
-                    className="border-2 border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group bg-white"
-                    onClick={() => handleLayoutSelect(layout.id)}
-                  >
-                    <div className="aspect-[3/4] bg-gray-100 overflow-hidden relative">
-                      {layoutPreviews.has(layout.id) ? (
-                        <img
-                          src={layoutPreviews.get(layout.id)!}
-                          alt={layout.name}
-                          className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform"
-                        />
-                      ) : layout.canvasData ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                          <div className="text-xs text-gray-500">Загрузка превью...</div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              {loading ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg">Загрузка шаблонов...</p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-12">
+                  <p className="text-red-500 text-lg">{error}</p>
+                </div>
+              ) : activeTab === 'universal' ? (
+                universalLayouts.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {universalLayouts.map((layout) => (
+                      <div
+                        key={layout.id}
+                        className="border-2 border-gray-200 rounded-lg overflow-hidden hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group bg-white"
+                        onClick={() => handleLayoutSelect(layout.id)}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div className="aspect-[3/4] bg-gray-100 overflow-hidden relative">
+                          {layoutPreviews.has(layout.id) ? (
+                            <img
+                              src={layoutPreviews.get(layout.id) ?? ''}
+                              alt={layout.name}
+                              className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform"
+                              loading="lazy"
+                            />
+                          ) : layout.canvasData ? (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                              <div className="text-xs text-gray-500">Загрузка превью...</div>
+                            </div>
+                          ) : layout.preview ? (
+                            <img
+                              src={
+                                layout.preview.startsWith('http')
+                                  ? layout.preview
+                                  : layout.preview.startsWith('/')
+                                  ? `http://localhost:3000${layout.preview}`
+                                  : `${window.location.origin}${layout.preview}`
+                              }
+                              alt={layout.name}
+                              className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                              <svg
+                                className="text-gray-400"
+                                width="60"
+                                height="60"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1"
+                              >
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                                <polyline points="21 15 16 10 5 21" />
+                              </svg>
+                            </div>
+                          )}
                         </div>
-                      ) : layout.preview ? (
-                        <img
-                          src={
-                            layout.preview.startsWith('http')
-                              ? layout.preview
-                              : layout.preview.startsWith('/')
-                              ? layout.preview
-                              : `${window.location.origin}${layout.preview}`
-                          }
-                          alt={layout.name}
-                          className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
+                        <div className="p-3">
+                          <h3 className="font-semibold text-sm text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {layout.name}
+                          </h3>
+                          {layout.description && (
+                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">{layout.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500 text-lg">Универсальные макеты не найдены</p>
+                  </div>
+                )
+              ) : categoryTemplates.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {categoryTemplates.map((template) => {
+                    const layoutCount = (template.layouts as LayoutSchema[] | undefined)?.length ?? 0;
+                    return (
+                      <div
+                        key={template.id}
+                        className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group bg-white"
+                        onClick={() => handleTemplateSelect(template.id)}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                            <svg
+                              className="text-white"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                              <path d="M3 9h18M9 21V9" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-base text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {template.name}
+                            </h3>
+                            {template.description && (
+                              <p className="text-xs text-gray-600 mt-1 line-clamp-2">{template.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-xs text-gray-500 font-medium">
+                
+                                {layoutCount} {layoutCount === 1 ? 'макет' : layoutCount < 5 ? 'макета' : 'макетов'}
+                              </span>
+                            </div>
+                          </div>
                           <svg
-                            className="text-gray-400"
-                            width="60"
-                            height="60"
+                            className="flex-shrink-0 text-gray-400 group-hover:text-blue-600 transition-colors mt-1"
+                            width="16"
+                            height="16"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="1"
+                            strokeWidth="2"
                           >
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
+                            <path d="M9 18l6-6-6-6" />
                           </svg>
                         </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-semibold text-sm text-gray-900 group-hover:text-blue-600 transition-colors">
-                        {layout.name}
-                      </h3>
-                      {layout.description && (
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{layout.description}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">Универсальные макеты не найдены</p>
-              </div>
-            )
-          ) : categoryTemplates.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {categoryTemplates.map((template) => {
-                const layoutCount = (template.layouts as LayoutSchema[] | undefined)?.length || 0;
-                return (
-                  <div
-                    key={template.id}
-                    className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer group bg-white"
-                    onClick={() => handleTemplateSelect(template.id)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                        <svg
-                          className="text-white"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                          <path d="M3 9h18M9 21V9" />
-                        </svg>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base text-gray-900 group-hover:text-blue-600 transition-colors">
-                          {template.name}
-                        </h3>
-                        {template.description && (
-                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">{template.description}</p>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs text-gray-500 font-medium">
-                            {layoutCount} {layoutCount === 1 ? 'макет' : layoutCount < 5 ? 'макета' : 'макетов'}
-                          </span>
-                        </div>
-                      </div>
-                      <svg
-                        className="flex-shrink-0 text-gray-400 group-hover:text-blue-600 transition-colors mt-1"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M9 18l6-6-6-6" />
-                      </svg>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg">Шаблоны не найдены</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">Шаблоны не найдены</p>
-            </div>
-          )}
-        </div>
           </motion.div>
         </motion.div>
       )}

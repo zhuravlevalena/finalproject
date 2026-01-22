@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { useLocation } from 'wouter';
 import { useEffect, useMemo, useState } from 'react';
 import { fabric } from 'fabric';
@@ -32,11 +33,11 @@ export default function TemplateSelectionPage(): React.JSX.Element {
   }, []);
 
   const handleTemplateSelect = (templateId: number): void => {
-    setLocation(`/templates?templateId=${templateId}`);
+    setLocation(`/templates?templateId=${templateId.toString()}`);
   };
 
   const handleLayoutSelect = (layoutId: number): void => {
-    setLocation(`/layout-editor/${layoutId}`);
+    setLocation(`/layout-editor/${layoutId.toString()}`);
   };
 
   // Готовим данные для вкладок
@@ -76,19 +77,28 @@ export default function TemplateSelectionPage(): React.JSX.Element {
 
       const previews = new Map<number, string>();
 
+      type CanvasDataStructure = {
+        version?: string;
+        objects?: unknown[];
+      };
+
       for (const layout of universalLayouts) {
-        if (!layout.canvasData) continue;
+        if (!layout.canvasData) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
 
         try {
           // Парсим canvasData
-          let canvasData: { version?: string; objects?: unknown[] } | null = null;
+          let canvasData: CanvasDataStructure | null = null;
           if (typeof layout.canvasData === 'string') {
-            canvasData = JSON.parse(layout.canvasData);
+            canvasData = JSON.parse(layout.canvasData) as CanvasDataStructure;
           } else if (typeof layout.canvasData === 'object') {
-            canvasData = layout.canvasData as { version?: string; objects?: unknown[] };
+            canvasData = layout.canvasData as CanvasDataStructure;
           }
 
-          if (!canvasData || !canvasData.objects || !Array.isArray(canvasData.objects)) continue;
+          // eslint-disable-next-line no-continue
+          if (!canvasData?.objects || !Array.isArray(canvasData.objects)) continue;
 
           // Преобразуем пути к изображениям в полные URL и добавляем crossOrigin для CORS
           const processedObjects = canvasData.objects.map((obj: unknown) => {
@@ -115,7 +125,11 @@ export default function TemplateSelectionPage(): React.JSX.Element {
           canvas.width = 900;
           canvas.height = 1200;
 
-          if (!canvas || !canvas.getContext) continue;
+          const context = canvas.getContext('2d');
+          if (!context) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
 
           const fabricCanvas = new fabric.Canvas(canvas, {
             width: 900,
@@ -123,9 +137,10 @@ export default function TemplateSelectionPage(): React.JSX.Element {
             backgroundColor: '#ffffff',
           });
 
-          if (!fabricCanvas?.getElement?.()) continue;
+          //  const _canvasElement = fabricCanvas.getElement();
 
           // Используем fabric.util.enlivenObjects для правильной загрузки изображений
+          // eslint-disable-next-line no-await-in-loop
           await new Promise<void>((resolve) => {
             fabric.util.enlivenObjects(
               processedCanvasData.objects,
@@ -136,9 +151,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                     if (obj.type === 'image') {
                       const img = obj as fabric.Image;
                       const element = img.getElement();
-                      if (element) {
-                        element.crossOrigin = 'anonymous';
-                      }
+                      element.crossOrigin = 'anonymous';
                     }
                     fabricCanvas.add(obj);
                   });
@@ -146,39 +159,37 @@ export default function TemplateSelectionPage(): React.JSX.Element {
 
                   // Ждем загрузки всех изображений
                   const images = fabricCanvas.getObjects('image') as fabric.Image[];
-                  
+
                   if (images.length > 0) {
                     await Promise.all(
                       images.map(
                         (img) =>
                           new Promise<void>((imgResolve) => {
                             const element = img.getElement();
-                            if (element) {
-                              if (!element.crossOrigin) {
-                                element.crossOrigin = 'anonymous';
-                              }
-                              const imgEl = element instanceof HTMLImageElement ? element : null;
-                              if (imgEl?.complete && imgEl.naturalWidth > 0) {
+
+                            element.crossOrigin ??= 'anonymous';
+                            const imgEl = element instanceof HTMLImageElement ? element : null;
+                            if (imgEl?.complete && imgEl.naturalWidth > 0) {
+                              imgResolve();
+                            } else if (imgEl) {
+                              const onLoad = (): void => {
+                                imgEl.removeEventListener('load', onLoad);
+                                // eslint-disable-next-line no-use-before-define
+                                imgEl.removeEventListener('error', onError);
                                 imgResolve();
-                              } else if (imgEl) {
-                                const onLoad = (): void => {
-                                  imgEl.removeEventListener('load', onLoad);
-                                  imgEl.removeEventListener('error', onError);
-                                  imgResolve();
-                                };
-                                const onError = (): void => {
-                                  imgEl.removeEventListener('load', onLoad);
-                                  imgEl.removeEventListener('error', onError);
-                                  imgResolve();
-                                };
-                                imgEl.addEventListener('load', onLoad);
-                                imgEl.addEventListener('error', onError);
-                                setTimeout(() => {
-                                  imgEl.removeEventListener('load', onLoad);
-                                  imgEl.removeEventListener('error', onError);
-                                  imgResolve();
-                                }, 5000);
-                              }
+                              };
+                              const onError = (): void => {
+                                imgEl.removeEventListener('load', onLoad);
+                                imgEl.removeEventListener('error', onError);
+                                imgResolve();
+                              };
+                              imgEl.addEventListener('load', onLoad);
+                              imgEl.addEventListener('error', onError);
+                              setTimeout(() => {
+                                imgEl.removeEventListener('load', onLoad);
+                                imgEl.removeEventListener('error', onError);
+                                imgResolve();
+                              }, 5000);
                             } else {
                               imgResolve();
                             }
@@ -187,19 +198,17 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                     );
                   }
 
-                  if (fabricCanvas.getElement?.() && fabricCanvas.getContext()) {
-                    fabricCanvas.renderAll();
-                    
-                    const dataURL = fabricCanvas.toDataURL({
-                      format: 'png',
-                      quality: 0.8,
-                      multiplier: 0.3,
-                    });
-                    
-                    previews.set(layout.id, dataURL);
-                  }
+                  fabricCanvas.renderAll();
+
+                  const dataURL = fabricCanvas.toDataURL({
+                    format: 'png',
+                    quality: 0.8,
+                    multiplier: 0.3,
+                  });
+
+                  previews.set(layout.id, dataURL);
                 } catch (renderErr) {
-                  console.warn(`Error rendering layout ${layout.id}:`, renderErr);
+                  console.warn(`Error rendering layout ${layout.id.toString()}:`, renderErr);
                 } finally {
                   try {
                     fabricCanvas.clear();
@@ -213,7 +222,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
             );
           });
         } catch (err) {
-          console.warn(`Could not render preview for layout ${layout.id}:`, err);
+          console.warn(`Could not render preview for layout ${layout.id.toString()}:`, err);
         }
       }
 
@@ -319,7 +328,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                   {/* Приоритет: сначала срендеренный из canvasData, потом preview, потом плейсхолдер */}
                   {layoutPreviews.has(layout.id) ? (
                     <img
-                      src={layoutPreviews.get(layout.id)!}
+                      src={layoutPreviews.get(layout.id)}
                       alt={layout.name}
                       className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform"
                     />
@@ -335,8 +344,8 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                         layout.preview.startsWith('http')
                           ? layout.preview
                           : layout.preview.startsWith('/')
-                          ? layout.preview
-                          : `${window.location.origin}${layout.preview}`
+                            ? layout.preview
+                            : `${window.location.origin}${layout.preview}`
                       }
                       alt={layout.name}
                       className="w-full h-full object-contain bg-white group-hover:scale-105 transition-transform"
@@ -345,10 +354,8 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                         target.style.display = 'none';
                         const parent = target.parentElement;
                         if (parent) {
-                          const placeholder = parent.querySelector(
-                            '.preview-placeholder',
-                          ) as HTMLElement;
-                          if (placeholder) {
+                          const placeholder = parent.querySelector('.preview-placeholder');
+                          if (placeholder instanceof HTMLElement) {
                             placeholder.style.display = 'flex';
                           }
                         }
@@ -398,7 +405,7 @@ export default function TemplateSelectionPage(): React.JSX.Element {
       templates.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categoryTemplates.map((template) => {
-            const layoutCount = (template.layouts as LayoutSchema[] | undefined)?.length || 0;
+            const layoutCount = (template.layouts as LayoutSchema[] | undefined)?.length ?? 0;
             return (
               <div
                 key={template.id}
@@ -427,7 +434,9 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                       </h3>
                     </div>
                     {template.description && (
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{template.description}</p>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                        {template.description}
+                      </p>
                     )}
                     <div className="flex items-center gap-4 mt-3">
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -443,11 +452,8 @@ export default function TemplateSelectionPage(): React.JSX.Element {
                         </svg>
                         <span className="font-medium">{layoutCount}</span>
                         <span>
-                          {layoutCount === 1
-                            ? 'макет'
-                            : layoutCount < 5
-                              ? 'макета'
-                              : 'макетов'}
+                         
+                          {layoutCount === 1 ? 'макет' : layoutCount < 5 ? 'макета' : 'макетов'}
                         </span>
                       </div>
                     </div>

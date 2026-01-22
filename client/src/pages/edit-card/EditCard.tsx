@@ -41,7 +41,6 @@ export default function EditCard(): React.JSX.Element {
     enabled: !!cardId,
   });
 
-  // Загружаем данные слайдов из карточки
   useEffect(() => {
     if (!card) return;
 
@@ -67,64 +66,60 @@ export default function EditCard(): React.JSX.Element {
     const slidesData = meta?.slides ?? [];
     const slideCount = meta?.slideCount ?? 1;
 
-    // Инициализируем массив слайдов
     const loadedSlides: SlideData[] = [];
 
-    const loadSlideData = async () => {
+    const loadSlideData = async (): Promise<void> => {
       for (let i = 0; i < slideCount; i++) {
         const slideData = slidesData[i];
         const slide: SlideData = {
-          canvasData: slideData?.canvasData,
+          canvasData: slideData.canvasData,
           uploadedImage: null,
           backgroundImage: null,
         };
 
-        // Загружаем изображение слайда, если есть imageId
-        if (slideData?.imageId) {
+        if (slideData.imageId) {
           try {
+            // eslint-disable-next-line no-await-in-loop
             const image = await imageService.getById(slideData.imageId);
-            if (image) {
-              slide.uploadedImage = {
-                id: image.id,
-                url: image.url.startsWith('http')
-                  ? image.url
-                  : `${window.location.origin}${image.url}`,
-              };
-            }
+
+            slide.uploadedImage = {
+              id: image.id,
+              url: image.url.startsWith('http')
+                ? image.url
+                : `${window.location.origin}${image.url}`,
+            };
           } catch (error) {
-            console.error(`Error loading image for slide ${i}:`, error);
+            console.error(`Error loading image for slide ${i.toString()}:`, error);
           }
         } else if (i === 0 && card.imageId) {
-          // Для первого слайда используем основное изображение карточки
           try {
+            // eslint-disable-next-line no-await-in-loop
             const image = await imageService.getById(card.imageId);
-            if (image) {
-              slide.uploadedImage = {
-                id: image.id,
-                url: image.url.startsWith('http')
-                  ? image.url
-                  : `${window.location.origin}${image.url}`,
-              };
-            }
+
+            slide.uploadedImage = {
+              id: image.id,
+              url: image.url.startsWith('http')
+                ? image.url
+                : `${window.location.origin}${image.url}`,
+            };
           } catch (error) {
             console.error('Error loading main image:', error);
           }
         }
 
-        // Загружаем фоновое изображение, если есть backgroundImageId
-        if (slideData?.backgroundImageId) {
+        if (slideData.backgroundImageId) {
           try {
+            // eslint-disable-next-line no-await-in-loop
             const bgImage = await imageService.getById(slideData.backgroundImageId);
-            if (bgImage) {
-              slide.backgroundImage = {
-                id: bgImage.id,
-                url: bgImage.url.startsWith('http')
-                  ? bgImage.url
-                  : `${window.location.origin}${bgImage.url}`,
-              };
-            }
+
+            slide.backgroundImage = {
+              id: bgImage.id,
+              url: bgImage.url.startsWith('http')
+                ? bgImage.url
+                : `${window.location.origin}${bgImage.url}`,
+            };
           } catch (error) {
-            console.error(`Error loading background image for slide ${i}:`, error);
+            console.error(`Error loading background image for slide ${i.toString()}:`, error);
           }
         }
 
@@ -146,13 +141,12 @@ export default function EditCard(): React.JSX.Element {
       imageFile?: File;
     }) => productCardService.update(cardId!, { canvasData }, imageFile),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['productCards'] });
-      queryClient.invalidateQueries({ queryKey: ['productCard', cardId] });
+      void queryClient.invalidateQueries({ queryKey: ['productCards'] });
+      void queryClient.invalidateQueries({ queryKey: ['productCard', cardId] });
       setLocation('/dashboard');
     },
   });
 
-  // Сохранение текущего слайда перед переключением
   const saveCurrentSlideCanvas = (): void => {
     if (!cardEditorRef.current?.getCanvasData) return;
     const canvasData = cardEditorRef.current.getCanvasData();
@@ -162,7 +156,7 @@ export default function EditCard(): React.JSX.Element {
         newSlides[currentSlideIndex] = {
           ...newSlides[currentSlideIndex],
           canvasData: {
-            fabric: canvasData.fabric ?? null,
+            fabric: canvasData.fabric ?? undefined,
             meta: canvasData.meta ?? {},
           },
         };
@@ -171,29 +165,26 @@ export default function EditCard(): React.JSX.Element {
     }
   };
 
-  // Обработчик переключения слайда
   const handleSlideChange = (newIndex: number): void => {
     if (newIndex === currentSlideIndex) return;
     saveCurrentSlideCanvas();
     setCurrentSlideIndex(newIndex);
   };
 
-  const handleSave = async (
+  const handleSave = (
     imageFile: File,
     canvasData?: { fabric?: Record<string, unknown>; meta?: Record<string, unknown> },
-  ): Promise<void> => {
+  ): void => {
     if (!cardId) return;
 
-    // Сохраняем данные текущего слайда
     const updatedSlides = [...slides];
     updatedSlides[currentSlideIndex] = {
       ...updatedSlides[currentSlideIndex],
-      canvasData: canvasData || updatedSlides[currentSlideIndex].canvasData,
+      canvasData: canvasData ?? updatedSlides[currentSlideIndex].canvasData,
     };
     setSlides(updatedSlides);
 
-    // Извлекаем параметры из существующей карточки
-    const existingCanvasData = card.canvasData as
+    const existingCanvasData = card?.canvasData as
       | {
           meta?: {
             slideCount?: number;
@@ -206,7 +197,6 @@ export default function EditCard(): React.JSX.Element {
     const slideCount = meta?.slideCount ?? slides.length;
     const cardSize = meta?.cardSize ?? '1024x768';
 
-    // Создаем массив всех слайдов с их данными
     const slidesData = updatedSlides.map((slide, index) => ({
       canvasData: slide.canvasData ?? { fabric: undefined, meta: {} },
       imageId: slide.uploadedImage?.id,
@@ -234,7 +224,7 @@ export default function EditCard(): React.JSX.Element {
     try {
       const result = await dispatch(deleteProductCardThunk(cardId));
       if (deleteProductCardThunk.fulfilled.match(result)) {
-        queryClient.invalidateQueries({ queryKey: ['productCards'] });
+       void queryClient.invalidateQueries({ queryKey: ['productCards'] });
         setLocation('/dashboard');
       } else {
         // eslint-disable-next-line no-alert
@@ -274,7 +264,6 @@ export default function EditCard(): React.JSX.Element {
     );
   }
 
-  // Извлекаем параметры из canvasData.meta
   const canvasData = card.canvasData as
     | {
         meta?: {
@@ -286,13 +275,11 @@ export default function EditCard(): React.JSX.Element {
     | undefined;
   const meta = canvasData?.meta;
 
-  // Безопасное извлечение cardSize
   let cardSize = '1024x768';
   if (meta && typeof meta === 'object' && 'cardSize' in meta && typeof meta.cardSize === 'string') {
     cardSize = meta.cardSize;
   }
 
-  // Безопасное извлечение slideCount
   let slideCount = 1;
   if (
     meta &&
@@ -316,7 +303,7 @@ export default function EditCard(): React.JSX.Element {
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Редактор карточки</h2>
 
-              {/* Навигация по слайдам */}
+             
               {hasMultipleSlides && (
                 <div className="mb-4 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                   <Button
@@ -335,6 +322,7 @@ export default function EditCard(): React.JSX.Element {
                     <div className="flex gap-1">
                       {Array.from({ length: slideCount }).map((_, index) => (
                         <div
+                          // eslint-disable-next-line react/no-array-index-key
                           key={index}
                           className={`w-2 h-2 rounded-full transition-colors ${
                             index === currentSlideIndex ? 'bg-blue-500' : 'bg-gray-300'
@@ -416,7 +404,7 @@ export default function EditCard(): React.JSX.Element {
         </div>
       </div>
 
-      {/* Кнопка удаления внизу экрана */}
+      
       <div className="border-t border-gray-200 bg-white py-4 mt-auto sticky bottom-0 z-50">
         <div className="container mx-auto px-4">
           {!showDeleteConfirm ? (

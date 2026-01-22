@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Базовые типы элементов
 export const canvasElementTypeSchema = z.enum([
   'text',
   'image',
@@ -13,7 +12,6 @@ export const canvasElementTypeSchema = z.enum([
   'circle',
 ]);
 
-// Стили элемента
 export const elementStylesSchema = z.object({
   fontSize: z.number().optional(),
   fontWeight: z.string().optional(),
@@ -28,7 +26,6 @@ export const elementStylesSchema = z.object({
   opacity: z.number().optional(),
 });
 
-// Ограничения элемента
 export const elementConstraintsSchema = z.object({
   lockAspectRatio: z.boolean().optional(),
   minWidth: z.number().optional(),
@@ -38,7 +35,6 @@ export const elementConstraintsSchema = z.object({
   locked: z.boolean().optional(),
 });
 
-// Элемент canvas
 export const canvasElementSchema = z.object({
   id: z.string(),
   type: canvasElementTypeSchema,
@@ -51,20 +47,20 @@ export const canvasElementSchema = z.object({
   angle: z.number().optional(),
   rotation: z.number().optional(),
   zIndex: z.number().optional(),
-  content: z.string().optional(), // текст или URL
-  text: z.string().optional(), // для текстовых элементов
-  src: z.string().optional(), // для изображений
+  content: z.string().optional(),
+  text: z.string().optional(),
+  src: z.string().optional(),
   styles: elementStylesSchema.optional(),
   constraints: elementConstraintsSchema.optional(),
   selectable: z.boolean().optional(),
   evented: z.boolean().optional(),
-  // Fabric.js специфичные поля
+
   originX: z.string().optional(),
   originY: z.string().optional(),
   fill: z.string().optional(),
   stroke: z.string().optional(),
   strokeWidth: z.number().optional(),
-  radius: z.number().optional(), // для кругов
+  radius: z.number().optional(),
   fontSize: z.number().optional(),
   fontFamily: z.string().optional(),
   fontWeight: z.string().optional(),
@@ -72,7 +68,6 @@ export const canvasElementSchema = z.object({
   textAlign: z.string().optional(),
 });
 
-// Canvas конфигурация
 export const canvasConfigSchema = z.object({
   width: z.number(),
   height: z.number(),
@@ -80,29 +75,24 @@ export const canvasConfigSchema = z.object({
   backgroundImage: z.string().optional(),
 });
 
-// Данные canvas (Fabric.js формат)
 export const fabricCanvasDataSchema = z.object({
   version: z.string().optional(),
-  objects: z.array(z.record(z.unknown())),
+  objects: z.array(z.record(z.string(), z.unknown())),
   background: z.string().optional(),
-  backgroundImage: z.record(z.unknown()).optional(),
+  backgroundImage: z.record(z.string(), z.unknown()).optional(),
 });
 
-// Полные данные макета
 export const layoutCanvasDataSchema = z.object({
-  fabric: fabricCanvasDataSchema.optional(), // Fabric.js JSON
-  elements: z.array(canvasElementSchema).optional(), // Наша типизированная структура
-  canvas: canvasConfigSchema.optional(),
-  meta: z.record(z.unknown()).optional(),
+  fabric: fabricCanvasDataSchema.optional(),
+  elements: z.array(canvasElementSchema).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
-// История изменений
 export const editorHistorySchema = z.object({
   past: z.array(z.array(canvasElementSchema)),
   future: z.array(z.array(canvasElementSchema)),
 });
 
-// Состояние редактора
 export const editorStateSchema = z.object({
   currentLayoutId: z.number().nullable(),
   elements: z.array(canvasElementSchema),
@@ -113,7 +103,6 @@ export const editorStateSchema = z.object({
   isDirty: z.boolean().default(false),
 });
 
-// Типы
 export type CanvasElementType = z.infer<typeof canvasElementTypeSchema>;
 export type ElementStyles = z.infer<typeof elementStylesSchema>;
 export type ElementConstraints = z.infer<typeof elementConstraintsSchema>;

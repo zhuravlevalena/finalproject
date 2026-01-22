@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { X, CheckCircle2, AlertCircle, Info, XCircle } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
@@ -32,60 +32,61 @@ export function useToast(): ToastContextType {
 export function ToastProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const removeToast = useCallback((id: string) => {
+  const removeToast = useCallback((id: string): void => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
   const addToast = useCallback(
-    (message: string, type: ToastType = 'info', duration = 3000) => {
+    (message: string, type: ToastType = 'info', duration?: number): void => {
       const id = Math.random().toString(36).substring(7);
-      setToasts((prev) => [...prev, { id, message, type, duration }]);
+      const toastDuration = duration ?? 3000;
+      setToasts((prev) => [...prev, { id, message, type, duration: toastDuration }]);
 
-      if (duration > 0) {
+      if (toastDuration > 0) {
         setTimeout(() => {
           removeToast(id);
-        }, duration);
+        }, toastDuration);
       }
     },
     [removeToast]
   );
 
   const toast = useCallback(
-    (message: string, type?: ToastType, duration?: number) => {
+    (message: string, type?: ToastType, duration?: number): void => {
       addToast(message, type, duration);
     },
     [addToast]
   );
 
   const success = useCallback(
-    (message: string, duration?: number) => {
+    (message: string, duration?: number): void => {
       addToast(message, 'success', duration);
     },
     [addToast]
   );
 
   const error = useCallback(
-    (message: string, duration?: number) => {
+    (message: string, duration?: number): void => {
       addToast(message, 'error', duration);
     },
     [addToast]
   );
 
   const info = useCallback(
-    (message: string, duration?: number) => {
+    (message: string, duration?: number): void => {
       addToast(message, 'info', duration);
     },
     [addToast]
   );
 
   const warning = useCallback(
-    (message: string, duration?: number) => {
+    (message: string, duration?: number): void => {
       addToast(message, 'warning', duration);
     },
     [addToast]
   );
 
-  const getIcon = (type: ToastType) => {
+  const getIcon = (type: ToastType): React.JSX.Element => {
     switch (type) {
       case 'success':
         return <CheckCircle2 className="h-5 w-5 text-green-600" />;
@@ -93,12 +94,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }): Reac
         return <XCircle className="h-5 w-5 text-red-600" />;
       case 'warning':
         return <AlertCircle className="h-5 w-5 text-yellow-600" />;
+      case 'info':
+        return <Info className="h-5 w-5 text-blue-600" />;
       default:
         return <Info className="h-5 w-5 text-blue-600" />;
     }
   };
 
-  const getStyles = (type: ToastType) => {
+  const getStyles = (type: ToastType): string => {
     switch (type) {
       case 'success':
         return 'bg-green-50 border-green-200 text-green-800';
@@ -106,6 +109,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }): Reac
         return 'bg-red-50 border-red-200 text-red-800';
       case 'warning':
         return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+      case 'info':
+        return 'bg-blue-50 border-blue-200 text-blue-800';
       default:
         return 'bg-blue-50 border-blue-200 text-blue-800';
     }

@@ -4,14 +4,10 @@ import type { Template } from './template.types';
 
 export const fetchTemplatesThunk = createAsyncThunk(
   'template/fetchAll',
-  async (marketplaceId?: number): Promise<Template[]> => {
-    return templateService.getAll(marketplaceId);
-  }
+  async (marketplaceId?: number): Promise<Template[]> => templateService.getAll(marketplaceId)
 );
 
 export const fetchTemplateByIdThunk = createAsyncThunk(
   'template/fetchById',
-  async (id: number): Promise<Template> => {
-    return templateService.getById(id);
-  }
+  async (id: number): Promise<Template> => templateService.getById(id)
 );

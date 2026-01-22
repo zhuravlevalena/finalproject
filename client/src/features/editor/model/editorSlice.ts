@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
 import type { CanvasElement, EditorState } from '@/entities/editor/model/editor.schemas';
 
 const initialState: EditorState = {
@@ -22,7 +23,7 @@ const editorSlice = createSlice({
   name: 'editor',
   initialState,
   reducers: {
-    // Загрузка макета
+   
     loadLayout: (state, action: PayloadAction<{ layoutId: number; elements: CanvasElement[] }>) => {
       state.currentLayoutId = action.payload.layoutId;
       state.elements = action.payload.elements;
@@ -31,7 +32,7 @@ const editorSlice = createSlice({
       state.isDirty = false;
     },
 
-    // Добавление элемента
+    
     addElement: (state, action: PayloadAction<CanvasElement>) => {
       state.history.past.push([...state.elements]);
       state.history.future = [];
@@ -40,7 +41,7 @@ const editorSlice = createSlice({
       state.isDirty = true;
     },
 
-    // Обновление элемента
+    
     updateElement: (
       state,
       action: PayloadAction<{ id: string; updates: Partial<CanvasElement> }>,
@@ -54,7 +55,7 @@ const editorSlice = createSlice({
       }
     },
 
-    // Удаление элемента
+    
     deleteElement: (state, action: PayloadAction<string>) => {
       state.history.past.push([...state.elements]);
       state.history.future = [];
@@ -65,12 +66,12 @@ const editorSlice = createSlice({
       state.isDirty = true;
     },
 
-    // Выбор элемента
+    
     selectElement: (state, action: PayloadAction<string | null>) => {
       state.selectedElementId = action.payload;
     },
 
-    // Дублирование элемента
+   
     duplicateElement: (state, action: PayloadAction<string>) => {
       const element = state.elements.find((el) => el.id === action.payload);
       if (element) {
@@ -78,7 +79,7 @@ const editorSlice = createSlice({
         state.history.future = [];
         const newElement: CanvasElement = {
           ...element,
-          id: `${element.id}-copy-${Date.now()}`,
+          id: `${element.id}-copy-${String(Date.now())}`,
           left: element.left + 20,
           top: element.top + 20,
         };
@@ -88,7 +89,7 @@ const editorSlice = createSlice({
       }
     },
 
-    // Изменение порядка (z-index)
+   
     bringToFront: (state, action: PayloadAction<string>) => {
       const element = state.elements.find((el) => el.id === action.payload);
       if (element) {
@@ -107,7 +108,7 @@ const editorSlice = createSlice({
       }
     },
 
-    // Undo/Redo
+   
     undo: (state) => {
       if (state.history.past.length > 0) {
         const previous = state.history.past[state.history.past.length - 1];
@@ -128,17 +129,15 @@ const editorSlice = createSlice({
       }
     },
 
-    // Изменение масштаба
+   
     setZoom: (state, action: PayloadAction<number>) => {
       state.zoom = action.payload;
     },
 
-    // Сброс состояния
-    resetEditor: (state) => {
-      return initialState;
-    },
+   
+     resetEditor: () => initialState,
 
-    // Отметка как сохраненное
+   
     markAsSaved: (state) => {
       state.isDirty = false;
     },
