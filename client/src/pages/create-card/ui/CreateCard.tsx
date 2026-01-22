@@ -119,7 +119,7 @@ export default function CreateCard(): React.JSX.Element {
   useEffect(() => {
     const imageId = searchParams.get('imageId');
     const imageUrl = searchParams.get('imageUrl');
-    
+
     if (imageId && imageUrl) {
       // Загружаем полную информацию об изображении
       dispatch(fetchImageByIdThunk(Number(imageId))).then((result) => {
